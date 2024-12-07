@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse d'Investissement Immobilier</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">MyRE - Analyse Immobilière</a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Input Forms Section -->
+        <div class="row">
+            <!-- Investment Form -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Détails de l'Investissement</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="investmentForm">
+                            <div class="mb-3">
+                                <label for="purchasePrice" class="form-label">Prix d'achat (€)</label>
+                                <input type="number" class="form-control" id="purchasePrice" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="notaryFeesRate" class="form-label">Frais de notaire (%)</label>
+                                <div class="input-group">
+                                    <input type="number" step="0.1" class="form-control" id="notaryFeesRate" value="8.0" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="form-text text-muted">Taux habituel : 8%</div>
+                                <div id="notaryFeesAmount" class="form-text"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="rentalIncome" class="form-label">Loyer mensuel (€)</label>
+                                <input type="number" class="form-control" id="rentalIncome" required>
+                            </div>
+                            
+                            <!-- Detailed Charges Section -->
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Détail des Charges</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="managementFees" class="form-label">Frais de gestion (% du loyer)</label>
+                                        <input type="number" step="0.1" class="form-control" id="managementFees" placeholder="ex: 7%">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="propertyTax" class="form-label">Taxe Foncière (€/an)</label>
+                                        <input type="number" class="form-control" id="propertyTax" placeholder="Montant annuel">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="insurance" class="form-label">Assurance PNO (€/mois)</label>
+                                        <input type="number" step="0.01" class="form-control" id="insurance" placeholder="ex: 30€">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="maintenanceProvision" class="form-label">Provision Travaux (% du loyer)</label>
+                                        <input type="number" step="0.1" class="form-control" id="maintenanceProvision" placeholder="ex: 3%">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="condoFees" class="form-label">Charges de Copropriété (€/mois)</label>
+                                        <input type="number" class="form-control" id="condoFees" placeholder="Si applicable">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="otherCharges" class="form-label">Autres Charges (€/mois)</label>
+                                        <input type="number" class="form-control" id="otherCharges" placeholder="Charges diverses">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="taxRegime" class="form-label">Régime fiscal</label>
+                                <select class="form-select" id="taxRegime">
+                                    <option value="micro_bic">Micro-BIC</option>
+                                    <option value="reel">Réel</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Calculer</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loan Calculator -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Calcul du Prêt</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="loanForm">
+                            <div class="mb-3">
+                                <label for="personalDeposit" class="form-label">Apport personnel (€)</label>
+                                <input type="number" class="form-control" id="personalDeposit" required>
+                                <div class="form-text text-muted">Montant de votre apport personnel</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="loanAmount" class="form-label">Montant du prêt (€)</label>
+                                <input type="number" class="form-control" id="loanAmount" readonly>
+                                <div class="form-text text-muted">Calculé automatiquement : Prix d'achat + Frais de notaire - Apport</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="interestRate" class="form-label">Taux d'intérêt annuel (%)</label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" class="form-control" id="interestRate" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="loanTerm" class="form-label">Durée (années)</label>
+                                <input type="number" class="form-control" id="loanTerm" required>
+                            </div>
+                            <div class="mb-3">
+                                <div id="loanSummary" class="alert alert-info" style="display: none;">
+                                    <h6 class="alert-heading">Résumé du financement</h6>
+                                    <div id="loanSummaryContent"></div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Calculer</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="row mt-4">
+            <!-- Financial Summary -->
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Synthèse Financière</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="financialSummary"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row mt-4">
+            <!-- Cash Flow Chart -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Cash-flow Mensuel</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="cashflowChart"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Amortization Chart -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Tableau d'Amortissement</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="amortizationChart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
