@@ -213,14 +213,44 @@ function updateResults(investmentData, loanData) {
     };
 
     const cashflowLayout = {
-        title: 'Décomposition du Cash Flow Mensuel',
+        title: {
+            text: 'Décomposition du Cash Flow Mensuel',
+            font: { size: 16 }
+        },
         showlegend: false,
         xaxis: {
             type: 'category'
         },
         yaxis: {
             title: 'Euros (€)'
-        }
+        },
+        margin: { t: 40, b: 40, l: 60, r: 40 },
+        height: 400,
+        autosize: true
+    };
+
+    const expenseTrace = {
+        type: 'pie',
+        values: expenseValues,
+        labels: expenseNames,
+        textinfo: 'label+percent',
+        textposition: 'outside',
+        hole: 0.4
+    };
+
+    const expenseLayout = {
+        title: {
+            text: 'Répartition des Charges',
+            font: { size: 16 }
+        },
+        showlegend: true,
+        legend: {
+            orientation: 'h',
+            y: -0.2
+        },
+        margin: { t: 40, b: 80, l: 40, r: 40 },
+        height: 400,
+        autosize: true
     };
 
     // Create amortization chart
@@ -248,7 +278,10 @@ function updateResults(investmentData, loanData) {
     };
     
     const amortizationLayout = {
-        title: 'Tableau d\'Amortissement',
+        title: {
+            text: 'Tableau d\'Amortissement',
+            font: { size: 16 }
+        },
         xaxis: {
             title: 'Mois',
             dtick: 12
@@ -262,32 +295,18 @@ function updateResults(investmentData, loanData) {
             x: 0,
             y: 1.1,
             orientation: 'h'
-        }
+        },
+        margin: { t: 60, b: 40, l: 60, r: 40 },
+        height: 400,
+        autosize: true
     };
 
-    // Plot all charts
-    Plotly.newPlot('cashflowChart', [cashflowTrace], cashflowLayout);
+    // Plot all charts with responsive configuration
+    const config = { responsive: true };
     
-    const expenseTrace = {
-        type: 'pie',
-        values: expenseValues,
-        labels: expenseNames,
-        textinfo: 'label+percent',
-        textposition: 'outside',
-        hole: 0.4
-    };
-
-    const expenseLayout = {
-        title: 'Répartition des Charges',
-        showlegend: true,
-        legend: {
-            orientation: 'h',
-            y: -0.2
-        }
-    };
-
-    Plotly.newPlot('chargesChart', [expenseTrace], expenseLayout);
-    Plotly.newPlot('amortizationChart', [principalTrace, interestTrace], amortizationLayout);
+    Plotly.newPlot('cashflowChart', [cashflowTrace], cashflowLayout, config);
+    Plotly.newPlot('chargesChart', [expenseTrace], expenseLayout, config);
+    Plotly.newPlot('amortizationChart', [principalTrace, interestTrace], amortizationLayout, config);
 }
 
 function updateNotaryFees() {
@@ -528,17 +547,21 @@ function updateInvestmentResults(data) {
     };
 
     const cashflowLayout = {
-        title: 'Décomposition du Cash Flow Mensuel',
+        title: {
+            text: 'Décomposition du Cash Flow Mensuel',
+            font: { size: 16 }
+        },
         showlegend: false,
         xaxis: {
             type: 'category'
         },
         yaxis: {
             title: 'Euros (€)'
-        }
+        },
+        margin: { t: 40, b: 40, l: 60, r: 40 },
+        height: 400,
+        autosize: true
     };
-
-    Plotly.newPlot('cashflowChart', [cashflowTrace], cashflowLayout);
 
     // Create expense breakdown pie chart
     const expenseTrace = {
@@ -551,14 +574,21 @@ function updateInvestmentResults(data) {
     };
 
     const expenseLayout = {
-        title: 'Répartition des Charges',
+        title: {
+            text: 'Répartition des Charges',
+            font: { size: 16 }
+        },
         showlegend: true,
         legend: {
             orientation: 'h',
             y: -0.2
-        }
+        },
+        margin: { t: 40, b: 80, l: 40, r: 40 },
+        height: 400,
+        autosize: true
     };
 
+    Plotly.newPlot('cashflowChart', [cashflowTrace], cashflowLayout);
     Plotly.newPlot('amortizationChart', [expenseTrace], expenseLayout);
 }
 
@@ -615,7 +645,10 @@ function updateLoanResults(data) {
     };
     
     const layout = {
-        title: 'Tableau d\'Amortissement',
+        title: {
+            text: 'Tableau d\'Amortissement',
+            font: { size: 16 }
+        },
         xaxis: {
             title: 'Mois',
             dtick: 12
@@ -629,7 +662,10 @@ function updateLoanResults(data) {
             x: 0,
             y: 1.1,
             orientation: 'h'
-        }
+        },
+        margin: { t: 60, b: 40, l: 60, r: 40 },
+        height: 400,
+        autosize: true
     };
     
     Plotly.newPlot('amortizationChart', [principalTrace, interestTrace], layout);
