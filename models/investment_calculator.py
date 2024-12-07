@@ -103,5 +103,6 @@ class InvestmentCalculator:
             'roi': roi,
             'tax_impact': tax_impact,
             'capital_gains': capital_gains,
-            'expense_breakdown': expense_breakdown
+            'expense_breakdown': expense_breakdown,
+            'rental_income': params['rental_income']
         }

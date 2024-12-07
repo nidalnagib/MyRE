@@ -89,7 +89,6 @@
                                     <option value="reel">Réel</option>
                                 </select>
                             </div>
-                            <button type="submit" class="btn btn-primary">Calculer</button>
                         </form>
                     </div>
                 </div>
@@ -130,50 +129,41 @@
                                     <div id="loanSummaryContent"></div>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">Calculer</button>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Results Section -->
+        <!-- Calculate Button Row -->
         <div class="row mt-4">
-            <!-- Financial Summary -->
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Synthèse Financière</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="financialSummary"></div>
-                    </div>
-                </div>
+            <div class="col-12 text-center">
+                <button id="calculateButton" class="btn btn-primary btn-lg">Calculer l'investissement</button>
             </div>
         </div>
 
-        <!-- Charts Section -->
-        <div class="row mt-4">
-            <!-- Cash Flow Chart -->
-            <div class="col-md-6">
+        <!-- Results Section -->
+        <div class="row mt-4" id="results" style="display: none;">
+            <div class="col-12">
                 <div class="card">
-                    <div class="card-header">
-                        <h5>Cash-flow Mensuel</h5>
-                    </div>
                     <div class="card-body">
-                        <div id="cashflowChart"></div>
-                    </div>
-                </div>
-            </div>
+                        <h5 class="card-title">Résultats de l'investissement</h5>
+                        <div id="financialSummary"></div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div id="cashflowChart"></div>
+                            </div>
+                        </div>
 
-            <!-- Amortization Chart -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Tableau d'Amortissement</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="amortizationChart"></div>
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div id="chargesChart"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div id="amortizationChart"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
