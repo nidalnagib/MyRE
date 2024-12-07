@@ -4,30 +4,28 @@ import os
 import logging
 from models.investment_calculator import InvestmentCalculator
 from models.loan_calculator import LoanCalculator
+from routes import bp
 
 # Configure logging
 dictConfig({
     'version': 1,
-    'formatters': {
-        'default': {
-            'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-        }
-    },
-    'handlers': {
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': 'logs/myre.log',
-            'formatter': 'default'
-        },
-    },
+    'formatters': {'default': {
+        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    }},
+    'handlers': {'wsgi': {
+        'class': 'logging.StreamHandler',
+        'stream': 'ext://flask.logging.wsgi_errors_stream',
+        'formatter': 'default'
+    }},
     'root': {
         'level': 'INFO',
-        'handlers': ['file']
+        'handlers': ['wsgi']
     }
 })
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+app.register_blueprint(bp)
 
 # Initialize calculators
 investment_calculator = InvestmentCalculator()

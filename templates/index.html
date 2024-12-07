@@ -83,11 +83,28 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="taxRegime" class="form-label">Régime fiscal</label>
+                                <label for="taxRegime" class="form-label">Régime Fiscal</label>
                                 <select class="form-select" id="taxRegime">
-                                    <option value="micro_bic">Micro-BIC</option>
-                                    <option value="reel">Réel</option>
+                                    <option value="micro_bic">Micro-BIC (50% abattement)</option>
+                                    <option value="reel">Réel (charges réelles + amortissements)</option>
                                 </select>
+                            </div>
+                            <!-- Tax Bracket Section -->
+                            <div class="mb-3">
+                                <label for="taxBracket" class="form-label">Tranche Marginale d'Imposition</label>
+                                <select class="form-select" id="taxBracket">
+                                    <option value="0">0% (Non imposable)</option>
+                                    <option value="11">11% (Jusqu'à 11294€)</option>
+                                    <option value="30">30% (De 11294€ à 28797€)</option>
+                                    <option value="41">41% (De 28797€ à 82341€)</option>
+                                    <option value="45">45% (Au-delà de 82341€)</option>
+                                </select>
+                            </div>
+                            <!-- Social Charges -->
+                            <div class="mb-3">
+                                <div class="form-text text-muted">
+                                    Les prélèvements sociaux de 17.2% seront automatiquement ajoutés
+                                </div>
                             </div>
                         </form>
                     </div>

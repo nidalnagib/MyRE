@@ -22,6 +22,14 @@ async function calculateAll() {
         const rentalIncome = parseFloat(document.getElementById('rentalIncome').value);
         const charges = calculateMonthlyCharges();
         const personalDeposit = parseFloat(document.getElementById('personalDeposit').value) || 0;
+        const taxRegime = document.getElementById('taxRegime').value;
+        const taxBracket = parseFloat(document.getElementById('taxBracket').value);
+
+        // Validate required fields
+        if (!purchasePrice || !rentalIncome) {
+            showError('Veuillez remplir tous les champs obligatoires');
+            return;
+        }
 
         // Calculate loan amount
         const totalPurchaseCost = purchasePrice * (1 + notaryFeesRate / 100);
@@ -31,10 +39,15 @@ async function calculateAll() {
         const interestRate = parseFloat(document.getElementById('interestRate').value) || 0;
         const loanTerm = parseInt(document.getElementById('loanTerm').value) || 25;
 
-        // Validate required fields
-        if (!purchasePrice || !rentalIncome) {
-            showError('Veuillez remplir tous les champs obligatoires');
-            return;
+        // Calculate monthly loan payment and interest if applicable
+        let monthlyLoanPayment = 0;
+        let monthlyInterest = 0;
+        if (loanAmount > 0 && interestRate > 0 && loanTerm > 0) {
+            const monthlyRate = interestRate / 1200; // Convert annual rate to monthly
+            const numPayments = loanTerm * 12;
+            monthlyLoanPayment = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
+                                (Math.pow(1 + monthlyRate, numPayments) - 1);
+            monthlyInterest = loanAmount * monthlyRate;
         }
 
         // Calculate investment metrics
@@ -51,7 +64,9 @@ async function calculateAll() {
                 other: charges.otherCharges,
                 total_monthly: charges.total
             },
-            tax_regime: document.getElementById('taxRegime').value
+            tax_regime: taxRegime,
+            tax_bracket: taxBracket,
+            loan_interest: monthlyInterest
         };
 
         // Calculate loan metrics
@@ -59,7 +74,8 @@ async function calculateAll() {
             loan_amount: loanAmount,
             interest_rate: interestRate / 100,
             term_years: loanTerm,
-            personal_deposit: personalDeposit
+            personal_deposit: personalDeposit,
+            monthly_payment: monthlyLoanPayment
         };
 
         console.log('Investment Data sent:', investmentData);
@@ -85,15 +101,16 @@ async function calculateAll() {
         console.log('Investment Result:', investmentResult);
         console.log('Loan Result:', loanResult);
 
-        if (!investmentResponse.ok) throw new Error(investmentResult.error || 'Investment calculation failed');
-        if (!loanResponse.ok) throw new Error(loanResult.error || 'Loan calculation failed');
-
-        if (investmentResult.success && loanResult.success) {
-            updateResults(investmentResult.data, loanResult.data);
-            document.getElementById('results').style.display = 'block';
-        } else {
-            throw new Error('Calculation failed');
+        if (!investmentResponse.ok || !investmentResult.success) {
+            throw new Error(investmentResult.error || 'Investment calculation failed');
         }
+        if (!loanResponse.ok || !loanResult.success) {
+            throw new Error(loanResult.error || 'Loan calculation failed');
+        }
+
+        updateResults(investmentResult.data, loanResult.data);
+        document.getElementById('results').style.display = 'block';
+
     } catch (error) {
         console.error('Error:', error);
         showError('Une erreur est survenue lors des calculs: ' + error.message);
@@ -142,9 +159,36 @@ function updateResults(investmentData, loanData) {
                         <td>Mensualité du prêt</td>
                         <td>-${loanData.monthly_payment?.toLocaleString('fr-FR') || 0} €</td>
                     </tr>
+                    <tr>
+                        <td>Impôts mensuels</td>
+                        <td>-${(investmentData.tax_impact?.total_tax / 12)?.toLocaleString('fr-FR') || 0} €</td>
+                    </tr>
                     <tr class="table-success">
                         <td><strong>Cash Flow Net</strong></td>
-                        <td><strong>${(investmentData.monthly_cashflow - (loanData.monthly_payment || 0))?.toLocaleString('fr-FR') || 0} €</strong></td>
+                        <td><strong>${(investmentData.after_tax_monthly_cashflow - (loanData.monthly_payment || 0))?.toLocaleString('fr-FR') || 0} €</strong></td>
+                    </tr>
+                    <tr class="table-info">
+                        <td colspan="2"><strong>Impact Fiscal Annuel</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Revenu imposable</td>
+                        <td>${investmentData.tax_impact?.taxable_income?.toLocaleString('fr-FR') || 0} €</td>
+                    </tr>
+                    <tr>
+                        <td>Impôt sur le revenu</td>
+                        <td>${investmentData.tax_impact?.income_tax?.toLocaleString('fr-FR') || 0} €</td>
+                    </tr>
+                    <tr>
+                        <td>Prélèvements sociaux</td>
+                        <td>${investmentData.tax_impact?.social_charges?.toLocaleString('fr-FR') || 0} €</td>
+                    </tr>
+                    <tr>
+                        <td>Total impôts</td>
+                        <td>${investmentData.tax_impact?.total_tax?.toLocaleString('fr-FR') || 0} €</td>
+                    </tr>
+                    <tr>
+                        <td>Taux effectif d'imposition</td>
+                        <td>${investmentData.tax_impact?.effective_tax_rate?.toFixed(2) || 0}%</td>
                     </tr>
                     <tr class="table-info">
                         <td colspan="2"><strong>Rentabilité</strong></td>
@@ -154,8 +198,8 @@ function updateResults(investmentData, loanData) {
                         <td>${investmentData.roi?.toFixed(2) || 0}%</td>
                     </tr>
                     <tr>
-                        <td>ROI Net (après prêt)</td>
-                        <td>${((investmentData.monthly_cashflow - (loanData.monthly_payment || 0)) * 12 / investmentData.purchase_costs?.total_cost * 100)?.toFixed(2) || 0}%</td>
+                        <td>ROI Net (après impôts)</td>
+                        <td>${investmentData.after_tax_roi?.toFixed(2) || 0}%</td>
                     </tr>
                 </tbody>
             </table>
@@ -191,122 +235,159 @@ function updateResults(investmentData, loanData) {
         name: 'Cash Flow',
         orientation: 'v',
         measure: [
-            'absolute', 'relative', 'relative', 'relative', 'relative', 'relative', 'relative', 'total'
+            'absolute', 'relative', 'relative', 'relative', 'relative', 'relative', 'relative', 'relative', 'total'
         ],
-        x: ['Loyer', 'Frais de gestion', 'Taxe foncière', 'Assurance', 'Travaux', 'Charges copro', 'Crédit', 'Cash Flow Net'],
+        x: [
+            'Loyer', 
+            'Frais de gestion', 
+            'Taxe foncière', 
+            'Assurance', 
+            'Travaux', 
+            'Charges copro', 
+            'Crédit',
+            'Impôts',
+            'Cash Flow Net'
+        ],
         y: [
             investmentData.rental_income || 0,
             -(expenses.management_fees || 0),
-            -(expenses.property_tax || 0),
+            -(expenses.property_tax / 12 || 0),
             -(expenses.insurance || 0),
             -(expenses.maintenance || 0),
             -(expenses.condo_fees || 0),
             -(loanData.monthly_payment || 0),
-            (investmentData.monthly_cashflow - (loanData.monthly_payment || 0)) || 0
+            -(investmentData.tax_impact?.total_tax / 12 || 0),
+            null
         ],
         connector: {
-            line: {color: 'rgb(63, 63, 63)'}
+            line: {
+                color: "rgb(63, 63, 63)"
+            }
         },
-        decreasing: {marker: {color: '#FF7F7F'}},
-        increasing: {marker: {color: '#7FBF7F'}},
-        totals: {marker: {color: '#4A90E2'}}
+        decreasing: {
+            marker: { color: "#FF6961" }
+        },
+        increasing: {
+            marker: { color: "#77DD77" }
+        },
+        totals: {
+            marker: { color: "#89CFF0" }
+        }
     };
 
     const cashflowLayout = {
-        title: {
-            text: 'Décomposition du Cash Flow Mensuel',
-            font: { size: 16 }
-        },
+        title: 'Décomposition du Cash Flow Mensuel',
         showlegend: false,
         xaxis: {
             type: 'category'
         },
         yaxis: {
-            title: 'Euros (€)'
+            type: 'linear',
+            tickformat: '€,.0f',
+            title: 'Montant (€)'
         },
-        margin: { t: 40, b: 40, l: 60, r: 40 },
-        height: 400,
+        margin: { t: 30, b: 40, l: 60, r: 20 },
         autosize: true
     };
 
+    const config = {
+        responsive: true,
+        displayModeBar: false
+    };
+
+    Plotly.newPlot('cashflowChart', [cashflowTrace], cashflowLayout, config);
+
+    // Create expense pie chart
     const expenseTrace = {
         type: 'pie',
-        values: expenseValues,
         labels: expenseNames,
+        values: expenseValues,
         textinfo: 'label+percent',
-        textposition: 'outside',
-        hole: 0.4
+        insidetextorientation: 'radial',
+        automargin: true
     };
 
     const expenseLayout = {
-        title: {
-            text: 'Répartition des Charges',
-            font: { size: 16 }
-        },
+        title: 'Répartition des Charges Mensuelles',
         showlegend: true,
         legend: {
             orientation: 'h',
             y: -0.2
         },
-        margin: { t: 40, b: 80, l: 40, r: 40 },
-        height: 400,
+        margin: { t: 30, b: 80, l: 20, r: 20 },
         autosize: true
     };
+
+    Plotly.newPlot('chargesChart', [expenseTrace], expenseLayout, config);
 
     // Create amortization chart
-    const schedule = loanData.amortization_schedule || [];
-    const months = Array.from({length: schedule.length}, (_, i) => i + 1);
-    
-    const principalTrace = {
-        name: 'Capital remboursé',
-        x: months,
-        y: schedule.map(entry => entry?.total_principal || 0),
-        type: 'scatter',
-        fill: 'tonexty',
-        stackgroup: 'one',
-        line: {color: '#4CAF50'}
-    };
-    
-    const interestTrace = {
-        name: 'Intérêts payés',
-        x: months,
-        y: schedule.map(entry => entry?.total_interest || 0),
-        type: 'scatter',
-        fill: 'tonexty',
-        stackgroup: 'one',
-        line: {color: '#FF5252'}
-    };
-    
-    const amortizationLayout = {
-        title: {
-            text: 'Tableau d\'Amortissement',
-            font: { size: 16 }
-        },
-        xaxis: {
-            title: 'Mois',
-            dtick: 12
-        },
-        yaxis: {
-            title: 'Euros (€)',
-            tickformat: ',.0f'
-        },
-        showlegend: true,
-        legend: {
-            x: 0,
-            y: 1.1,
-            orientation: 'h'
-        },
-        margin: { t: 60, b: 40, l: 60, r: 40 },
-        height: 400,
-        autosize: true
-    };
-
-    // Plot all charts with responsive configuration
-    const config = { responsive: true };
-    
-    Plotly.newPlot('cashflowChart', [cashflowTrace], cashflowLayout, config);
-    Plotly.newPlot('chargesChart', [expenseTrace], expenseLayout, config);
-    Plotly.newPlot('amortizationChart', [principalTrace, interestTrace], amortizationLayout, config);
+    if (loanData.loan_amount > 0) {
+        const months = Array.from({length: loanData.term_years * 12}, (_, i) => i + 1);
+        const monthlyRate = loanData.interest_rate / 12;
+        const monthlyPayment = loanData.monthly_payment;
+        
+        let remainingBalance = loanData.loan_amount;
+        let totalInterest = 0;
+        const principalData = [];
+        const interestData = [];
+        
+        for (let i = 0; i < months.length; i++) {
+            const interestPayment = remainingBalance * monthlyRate;
+            const principalPayment = monthlyPayment - interestPayment;
+            
+            totalInterest += interestPayment;
+            remainingBalance -= principalPayment;
+            
+            principalData.push(principalPayment);
+            interestData.push(interestPayment);
+        }
+        
+        const principalTrace = {
+            name: 'Capital remboursé',
+            x: months,
+            y: principalData,
+            type: 'scatter',
+            fill: 'tonexty',
+            stackgroup: 'one',
+            line: {color: '#4CAF50'}
+        };
+        
+        const interestTrace = {
+            name: 'Intérêts payés',
+            x: months,
+            y: interestData,
+            type: 'scatter',
+            fill: 'tonexty',
+            stackgroup: 'one',
+            line: {color: '#FF5252'}
+        };
+        
+        const amortizationLayout = {
+            title: 'Tableau d\'Amortissement',
+            showlegend: true,
+            legend: {
+                x: 0,
+                y: 1.1,
+                orientation: 'h'
+            },
+            xaxis: {
+                title: 'Mois',
+                dtick: 12
+            },
+            yaxis: {
+                title: 'Montant (€)',
+                tickformat: ',.0f'
+            },
+            margin: { t: 50, b: 40, l: 60, r: 20 },
+            autosize: true
+        };
+        
+        Plotly.newPlot('amortizationChart', [principalTrace, interestTrace], amortizationLayout, config);
+    } else {
+        // If no loan, display a message in the chart container
+        document.getElementById('amortizationChart').innerHTML = 
+            '<div class="alert alert-info">Pas de prêt à amortir</div>';
+    }
 }
 
 function updateNotaryFees() {
@@ -589,7 +670,78 @@ function updateInvestmentResults(data) {
     };
 
     Plotly.newPlot('cashflowChart', [cashflowTrace], cashflowLayout);
+
     Plotly.newPlot('amortizationChart', [expenseTrace], expenseLayout);
+
+    // Create amortization chart
+    if (loanData.loan_amount > 0) {
+        const months = Array.from({length: loanData.term_years * 12}, (_, i) => i + 1);
+        const monthlyRate = loanData.interest_rate / 12;
+        const monthlyPayment = loanData.monthly_payment;
+        
+        let remainingBalance = loanData.loan_amount;
+        let totalInterest = 0;
+        const principalData = [];
+        const interestData = [];
+        
+        for (let i = 0; i < months.length; i++) {
+            const interestPayment = remainingBalance * monthlyRate;
+            const principalPayment = monthlyPayment - interestPayment;
+            
+            totalInterest += interestPayment;
+            remainingBalance -= principalPayment;
+            
+            principalData.push(principalPayment);
+            interestData.push(interestPayment);
+        }
+        
+        const principalTrace = {
+            name: 'Capital remboursé',
+            x: months,
+            y: principalData,
+            type: 'scatter',
+            fill: 'tonexty',
+            stackgroup: 'one',
+            line: {color: '#4CAF50'}
+        };
+        
+        const interestTrace = {
+            name: 'Intérêts payés',
+            x: months,
+            y: interestData,
+            type: 'scatter',
+            fill: 'tonexty',
+            stackgroup: 'one',
+            line: {color: '#FF5252'}
+        };
+        
+        const amortizationLayout = {
+            title: 'Tableau d\'Amortissement',
+            showlegend: true,
+            legend: {
+                x: 0,
+                y: 1.1,
+                orientation: 'h'
+            },
+            xaxis: {
+                title: 'Mois',
+                dtick: 12
+            },
+            yaxis: {
+                title: 'Montant (€)',
+                tickformat: ',.0f'
+            },
+            margin: { t: 60, b: 40, l: 60, r: 40 },
+            height: 400,
+            autosize: true
+        };
+        
+        Plotly.newPlot('amortizationChart', [principalTrace, interestTrace], amortizationLayout);
+    } else {
+        // If no loan, display a message in the chart container
+        document.getElementById('amortizationChart').innerHTML = 
+            '<div class="alert alert-info">Pas de prêt à amortir</div>';
+    }
 }
 
 function updateLoanResults(data) {
@@ -645,23 +797,20 @@ function updateLoanResults(data) {
     };
     
     const layout = {
-        title: {
-            text: 'Tableau d\'Amortissement',
-            font: { size: 16 }
+        title: 'Tableau d\'Amortissement',
+        showlegend: true,
+        legend: {
+            x: 0,
+            y: 1.1,
+            orientation: 'h'
         },
         xaxis: {
             title: 'Mois',
             dtick: 12
         },
         yaxis: {
-            title: 'Euros (€)',
+            title: 'Montant (€)',
             tickformat: ',.0f'
-        },
-        showlegend: true,
-        legend: {
-            x: 0,
-            y: 1.1,
-            orientation: 'h'
         },
         margin: { t: 60, b: 40, l: 60, r: 40 },
         height: 400,
