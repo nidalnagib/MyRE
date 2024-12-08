@@ -214,7 +214,7 @@ function updateResults(investmentData, loanData) {
     createTaxImpactChart(investmentData);
     createReturnMetricsChart(investmentData, loanData);
     createExpensesChart(investmentData.expense_breakdown);
-    createCashflowChart(investmentData);
+    createCashflowChart(investmentData, loanData);
 }
 
 function updateNotaryFees() {
@@ -670,21 +670,59 @@ function updateLoanResults(data) {
     Plotly.newPlot('amortizationChart', [principalTrace, interestTrace], layout);
 }
 
-function createCashflowChart(data) {
+function createCashflowChart(investmentData, loanData) {
+    // Prepare data for waterfall chart
+    const items = [
+        { name: 'Loyer', value: investmentData.rental_income, color: '#28a745' },  // Green for income
+        { name: 'Frais de gestion', value: -investmentData.expense_breakdown.management_fees, color: '#dc3545' },
+        { name: 'Taxe foncière', value: -investmentData.expense_breakdown.property_tax, color: '#dc3545' },
+        { name: 'Assurance', value: -investmentData.expense_breakdown.insurance, color: '#dc3545' },
+        { name: 'Provision travaux', value: -investmentData.expense_breakdown.maintenance, color: '#dc3545' },
+        { name: 'Charges copro', value: -investmentData.expense_breakdown.condo_fees, color: '#dc3545' },
+        { name: 'Autres charges', value: -investmentData.expense_breakdown.other, color: '#dc3545' },
+        { name: 'Mensualité prêt', value: -loanData.monthly_payment, color: '#ffc107' },  // Yellow for loan
+        { name: 'Cash-flow net', value: investmentData.after_tax_monthly_cashflow, color: '#007bff' }  // Blue for result
+    ];
+
+    // Filter out items with zero value
+    const filteredItems = items.filter(item => item.value !== 0);
+
     const trace = {
-        x: ['Revenus', 'Charges', 'Cash-flow'],
-        y: [data.monthly_cashflow + data.expenses, data.expenses, data.monthly_cashflow],
-        type: 'bar',
-        marker: {
-            color: ['#28a745', '#dc3545', '#007bff']
-        }
+        type: 'waterfall',
+        name: "Cash Flow",
+        orientation: "v",
+        measure: filteredItems.map((_, i) => i === filteredItems.length - 1 ? "total" : "relative"),
+        x: filteredItems.map(item => item.name),
+        textposition: "outside",
+        text: filteredItems.map(item => Math.abs(item.value).toLocaleString('fr-FR') + ' €'),
+        y: filteredItems.map(item => item.value),
+        connector: {
+            line: {
+                color: "rgb(63, 63, 63)"
+            }
+        },
+        decreasing: { marker: { color: "#dc3545" } },  // Red for expenses
+        increasing: { marker: { color: "#28a745" } },  // Green for income
+        totals: { marker: { color: "#007bff" } }      // Blue for total
     };
 
     const layout = {
-        title: 'Analyse du Cash-flow Mensuel',
+        title: {
+            text: 'Décomposition du Cash-flow Mensuel',
+            font: { size: 16 }
+        },
+        showlegend: false,
+        xaxis: {
+            type: 'category',
+            tickangle: -45
+        },
         yaxis: {
-            title: 'Euros (€)'
-        }
+            title: 'Euros (€)',
+            tickformat: ',.0f'
+        },
+        margin: { t: 40, b: 80, l: 60, r: 40 },
+        height: 400,
+        autosize: true
     };
 
     Plotly.newPlot('cashflowChart', [trace], layout);
@@ -725,7 +763,7 @@ function createEquityChart(loanData, investmentData) {
     const schedule = loanData.amortization_schedule;
     
     const yearlyData = schedule.filter(entry => entry.payment_num % 12 === 0);
-    const xValues = yearlyData.map((_, index) => index);
+    const xValues = Array.from({length: schedule.length}, (_, i) => i + 1);
     
     // Calculate property value with appreciation
     const propertyValues = xValues.map(year => 
