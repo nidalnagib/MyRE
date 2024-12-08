@@ -679,15 +679,24 @@ function createCashflowChart(investmentData, loanData) {
         },
         yaxis: {
             title: 'Euros (€)',
-            tickformat: ',.0f'
+            tickformat: ',.0f',
+            automargin: true
         },
         showlegend: false,
         margin: { t: 40, b: 80, l: 60, r: 40 },
         height: 400,
-        autosize: true
+        width: null,
+        autosize: true,
+        responsive: true
     };
 
-    Plotly.newPlot('cashflowChart', [trace], layout);
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false
+    };
+
+    Plotly.newPlot('cashflowChart', [trace], layout, config);
 }
 
 function createAmortizationChart(schedule) {
@@ -706,16 +715,33 @@ function createAmortizationChart(schedule) {
     };
 
     const layout = {
-        title: 'Tableau d\'Amortissement',
+        title: {
+            text: 'Tableau d\'Amortissement',
+            font: { size: 16 }
+        },
         xaxis: {
-            title: 'Numéro de paiement'
+            title: 'Numéro de paiement',
+            automargin: true
         },
         yaxis: {
-            title: 'Euros (€)'
-        }
+            title: 'Euros (€)',
+            automargin: true,
+            tickformat: ',.0f'
+        },
+        margin: { t: 40, b: 60, l: 80, r: 40 },
+        height: 400,
+        width: null,
+        autosize: true,
+        responsive: true
     };
 
-    Plotly.newPlot('amortizationChart', [trace1, trace2], layout);
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false
+    };
+
+    Plotly.newPlot('amortizationChart', [trace1, trace2], layout, config);
 }
 
 function createEquityChart(loanData, investmentData) {
@@ -779,24 +805,36 @@ function createEquityChart(loanData, investmentData) {
             title: 'Années',
             tickformat: 'd',
             range: [0, years],
-            dtick: Math.ceil(years / 10)  // Show about 10 ticks on x-axis
+            dtick: Math.ceil(years / 10),
+            automargin: true
         },
         yaxis: {
             title: 'Montant (€)',
             tickformat: ',.0f',
-            range: [0, Math.max(...propertyValues)]
+            range: [0, Math.max(...propertyValues)],
+            automargin: true
         },
         showlegend: true,
         legend: {
             x: 0,
-            y: 1
+            y: 1,
+            xanchor: 'left',
+            yanchor: 'top'
         },
         margin: { t: 40, b: 60, l: 80, r: 40 },
         height: 400,
-        autosize: true
+        width: null,
+        autosize: true,
+        responsive: true
     };
-    
-    Plotly.newPlot('equityChart', data, layout);
+
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false
+    };
+
+    Plotly.newPlot('equityChart', data, layout, config);
 }
 
 function createTaxImpactChart(investmentData) {
@@ -827,11 +865,24 @@ function createTaxImpactChart(investmentData) {
         showlegend: true,
         legend: {
             x: 0,
-            y: 1
-        }
+            y: 1,
+            xanchor: 'left',
+            yanchor: 'top'
+        },
+        margin: { t: 40, b: 40, l: 40, r: 40 },
+        height: 400,
+        width: null,
+        autosize: true,
+        responsive: true
     };
-    
-    Plotly.newPlot('taxChart', data, layout);
+
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false
+    };
+
+    Plotly.newPlot('taxChart', data, layout, config);
 }
 
 function createReturnMetricsChart(investmentData, loanData) {
@@ -873,20 +924,35 @@ function createReturnMetricsChart(investmentData, loanData) {
         },
         xaxis: {
             title: 'Années',
-            tickformat: 'd'
+            tickformat: 'd',
+            automargin: true
         },
         yaxis: {
             title: 'Pourcentage (%)',
-            tickformat: ',.1f'
+            tickformat: ',.1f',
+            automargin: true
         },
         showlegend: true,
         legend: {
             x: 0,
-            y: 1
-        }
+            y: 1,
+            xanchor: 'left',
+            yanchor: 'top'
+        },
+        margin: { t: 40, b: 60, l: 80, r: 40 },
+        height: 400,
+        width: null,
+        autosize: true,
+        responsive: true
     };
-    
-    Plotly.newPlot('returnMetricsChart', data, layout);
+
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false
+    };
+
+    Plotly.newPlot('returnMetricsChart', data, layout, config);
 }
 
 function showError(message) {
