@@ -4,7 +4,6 @@ import os
 import logging
 from models.investment_calculator import InvestmentCalculator
 from models.loan_calculator import LoanCalculator
-from routes import bp
 
 # Configure logging
 dictConfig({
@@ -25,7 +24,6 @@ dictConfig({
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
-app.register_blueprint(bp)
 
 # Initialize calculators
 investment_calculator = InvestmentCalculator()

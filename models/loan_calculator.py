@@ -57,6 +57,7 @@ class LoanCalculator:
             loan_amount = float(params.get('loan_amount', 0))
             interest_rate = float(params.get('interest_rate', 0))
             term_years = int(params.get('term_years', 30))
+            personal_deposit = float(params.get('personal_deposit', 0))
             
             if loan_amount <= 0 or term_years <= 0:
                 raise ValueError("Loan amount and term must be positive")
@@ -75,6 +76,7 @@ class LoanCalculator:
                 'term_years': term_years,
                 'interest_rate': interest_rate,
                 'loan_amount': loan_amount,
+                'personal_deposit': personal_deposit,
                 'amortization_schedule': schedule
             }
             
