@@ -82,6 +82,54 @@ class InvestmentCalculator:
             'effective_tax_rate': (total_tax / annual_rental_income * 100) if annual_rental_income > 0 else 0
         }
     
+    def calculate_total_roi(self, params, annual_cashflow, total_investment, loan_data=None):
+        """Calculate comprehensive Return on Investment including all components"""
+        # 1. Cash Flow Return (already annualized)
+        cash_flow_roi = (annual_cashflow / total_investment) * 100 if total_investment > 0 else 0
+        
+        # 2. Equity Return
+        equity_components = {
+            'principal_paydown': 0,
+            'appreciation': 0
+        }
+        
+        if loan_data:
+            # Calculate principal paydown (equity buildup through mortgage payments)
+            annual_principal_paid = loan_data.get('annual_principal_payment', 0)
+            equity_components['principal_paydown'] = (annual_principal_paid / total_investment) * 100
+            
+        # Calculate appreciation return
+        appreciation_rate = params.get('appreciation_rate', 2.0) / 100  # Default 2% if not specified
+        annual_appreciation = params['purchase_price'] * appreciation_rate
+        equity_components['appreciation'] = (annual_appreciation / total_investment) * 100
+        
+        # 3. Tax Benefits
+        tax_benefits = 0
+        if params.get('tax_regime') == 'reel':
+            # Include depreciation benefit
+            depreciation = self.calculate_depreciation(params['purchase_price'], 
+                                                     total_investment - params['purchase_price'])
+            tax_bracket = params.get('tax_bracket', 30) / 100
+            annual_tax_savings = depreciation['total'] * tax_bracket
+            tax_benefits = (annual_tax_savings / total_investment) * 100
+        
+        # Calculate Total ROI
+        total_roi = {
+            'cash_flow_roi': cash_flow_roi,
+            'equity_roi': equity_components['principal_paydown'] + equity_components['appreciation'],
+            'tax_benefits_roi': tax_benefits,
+            'total_roi': cash_flow_roi + equity_components['principal_paydown'] + 
+                        equity_components['appreciation'] + tax_benefits,
+            'components': {
+                'cash_flow': cash_flow_roi,
+                'principal_paydown': equity_components['principal_paydown'],
+                'appreciation': equity_components['appreciation'],
+                'tax_benefits': tax_benefits
+            }
+        }
+        
+        return total_roi
+
     def analyze_investment(self, params):
         """Comprehensive investment analysis with detailed expenses and tax impact"""
         purchase_costs = self.calculate_purchase_costs(
@@ -124,13 +172,22 @@ class InvestmentCalculator:
             'total_monthly': monthly_expenses.get('total_monthly', 0)
         }
         
+        # Calculate total ROI with all components
+        total_roi = self.calculate_total_roi(
+            params,
+            annual_cashflow,
+            purchase_costs['total_cost'],
+            params.get('loan_data', None)
+        )
+        
         return {
             'purchase_costs': purchase_costs,
             'monthly_cashflow': monthly_cashflow,
             'after_tax_monthly_cashflow': after_tax_monthly_cashflow,
             'annual_cashflow': annual_cashflow,
             'after_tax_annual_cashflow': after_tax_monthly_cashflow * 12,
-            'roi': roi,
+            'roi': total_roi['total_roi'],
+            'roi_breakdown': total_roi['components'],
             'after_tax_roi': self.calculate_roi(after_tax_monthly_cashflow * 12, purchase_costs['total_cost']),
             'tax_impact': tax_impact,
             'expense_breakdown': expense_breakdown,

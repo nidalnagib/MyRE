@@ -201,6 +201,25 @@ function updateResults(investmentData, loanData) {
                         <td>ROI Net</td>
                         <td>${investmentData.after_tax_roi?.toFixed(2) || 0}%</td>
                     </tr>
+                    <tr class="table-light">
+                        <td colspan="2"><strong>Détail de la rentabilité</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">ROI Cash-flow</td>
+                        <td>${investmentData.roi_breakdown?.cash_flow?.toFixed(2) || 0}%</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">ROI Remboursement capital</td>
+                        <td>${investmentData.roi_breakdown?.principal_paydown?.toFixed(2) || 0}%</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">ROI Plus-value</td>
+                        <td>${investmentData.roi_breakdown?.appreciation?.toFixed(2) || 0}%</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">ROI Avantages fiscaux</td>
+                        <td>${investmentData.roi_breakdown?.tax_benefits?.toFixed(2) || 0}%</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -384,9 +403,28 @@ function updateInvestmentResults(data) {
                         <td>Cash-flow annuel</td>
                         <td>${data.annual_cashflow?.toLocaleString('fr-FR') || 0} €</td>
                     </tr>
+                    <tr class="table-primary">
+                        <td><strong>Rentabilité Totale (ROI)</strong></td>
+                        <td><strong>${data.roi?.toFixed(2) || 0}%</strong></td>
+                    </tr>
+                    <tr class="table-light">
+                        <td colspan="2"><strong>Détail de la rentabilité</strong></td>
+                    </tr>
                     <tr>
-                        <td>Rentabilité (ROI)</td>
-                        <td>${data.roi?.toFixed(2) || 0}%</td>
+                        <td style="padding-left: 2rem;">ROI Cash-flow</td>
+                        <td>${data.roi_breakdown?.cash_flow?.toFixed(2) || 0}%</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">ROI Remboursement capital</td>
+                        <td>${data.roi_breakdown?.principal_paydown?.toFixed(2) || 0}%</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">ROI Plus-value</td>
+                        <td>${data.roi_breakdown?.appreciation?.toFixed(2) || 0}%</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">ROI Avantages fiscaux</td>
+                        <td>${data.roi_breakdown?.tax_benefits?.toFixed(2) || 0}%</td>
                     </tr>
                     <tr>
                         <td>Revenu imposable (${data.tax_impact.regime})</td>
@@ -400,84 +438,7 @@ function updateInvestmentResults(data) {
     document.getElementById('financialSummary').innerHTML = summaryHtml;
 
     // Create expense breakdown chart
-    const expenseLabels = {
-        management_fees: 'Frais de gestion',
-        property_tax: 'Taxe foncière',
-        insurance: 'Assurance PNO',
-        maintenance: 'Provision travaux',
-        condo_fees: 'Charges copropriété',
-        other: 'Autres charges'
-    };
-
-    const expenses = data.expense_breakdown || {};
-    const expenseValues = [];
-    const expenseNames = [];
-
-    for (const [key, value] of Object.entries(expenses)) {
-        if (key !== 'total_monthly' && value > 0) {
-            expenseValues.push(value);
-            expenseNames.push(key);
-        }
-    }
-
-    // Create cash flow chart
-    const cashflowTrace = {
-        type: 'waterfall',
-        name: 'Cash Flow',
-        orientation: 'v',
-        measure: [
-            'absolute', 'relative', 'relative', 'relative', 'relative', 'relative', 'total'
-        ],
-        x: ['Loyer', 
-            'Frais de gestion', 
-            'Taxe foncière', 
-            'Assurance', 
-            'Travaux', 
-            'Charges copro', 
-            'Cash Flow'],
-        y: [
-            data.rental_income || 0,
-            -(expenses.management_fees || 0),
-            -(expenses.property_tax || 0),
-            -(expenses.insurance || 0),
-            -(expenses.maintenance || 0),
-            -(expenses.condo_fees || 0),
-            data.monthly_cashflow || 0
-        ],
-        connector: {
-            line: {
-                color: 'rgb(63, 63, 63)'
-            }
-        },
-        decreasing: {
-            marker: {color: '#FF7F7F'}
-        },
-        increasing: {
-            marker: {color: '#7FBF7F'}
-        },
-        totals: {
-            marker: {color: '#4A90E2'}
-        }
-    };
-
-    const cashflowLayout = {
-        title: {
-            text: 'Décomposition du Cash Flow Mensuel',
-            font: { size: 16 }
-        },
-        showlegend: false,
-        xaxis: {
-            type: 'category'
-        },
-        yaxis: {
-            title: 'Euros (€)'
-        },
-        margin: { t: 40, b: 40, l: 60, r: 40 },
-        height: 400,
-        autosize: true
-    };
-
-    Plotly.newPlot('cashflowChart', [cashflowTrace], cashflowLayout);
+    createExpensesChart(data.expense_breakdown);
 }
 
 function createExpensesChart(monthlyCharges) {
@@ -631,8 +592,7 @@ function updateLoanResults(data) {
         x: years,
         y: schedule.map(entry => entry?.total_principal || 0),
         type: 'scatter',
-        fill: 'tonexty',
-        stackgroup: 'one',
+        mode: 'lines',
         line: { color: '#4CAF50' }
     };
     
@@ -641,18 +601,14 @@ function updateLoanResults(data) {
         x: years,
         y: schedule.map(entry => entry?.total_interest || 0),
         type: 'scatter',
-        fill: 'tonexty',
-        stackgroup: 'one',
+        mode: 'lines',
         line: { color: '#FF5252' }
     };
     
     const layout = {
-        title: 'Tableau d\'Amortissement',
-        showlegend: true,
-        legend: {
-            x: 0,
-            y: 1.1,
-            orientation: 'h'
+        title: {
+            text: 'Tableau d\'Amortissement',
+            font: { size: 16 }
         },
         xaxis: {
             title: 'Mois',
@@ -661,6 +617,12 @@ function updateLoanResults(data) {
         yaxis: {
             title: 'Montant (€)',
             tickformat: ',.0f'
+        },
+        showlegend: true,
+        legend: {
+            x: 0,
+            y: 1.1,
+            orientation: 'h'
         },
         margin: { t: 60, b: 40, l: 60, r: 40 },
         height: 400,
@@ -711,7 +673,6 @@ function createCashflowChart(investmentData, loanData) {
             text: 'Décomposition du Cash-flow Mensuel',
             font: { size: 16 }
         },
-        showlegend: false,
         xaxis: {
             type: 'category',
             tickangle: -45
@@ -720,6 +681,7 @@ function createCashflowChart(investmentData, loanData) {
             title: 'Euros (€)',
             tickformat: ',.0f'
         },
+        showlegend: false,
         margin: { t: 40, b: 80, l: 60, r: 40 },
         height: 400,
         autosize: true
@@ -758,24 +720,27 @@ function createAmortizationChart(schedule) {
 
 function createEquityChart(loanData, investmentData) {
     const purchasePrice = investmentData.purchase_costs.purchase_price;
-    const appreciationRate = 0.02; // 2% annual appreciation
+    const appreciationRate = parseFloat(document.getElementById('appreciationRate').value) / 100 || 0.02;
     const years = loanData.term_years;
+    const loanAmount = loanData.loan_amount;
     const schedule = loanData.amortization_schedule;
     
-    const yearlyData = schedule.filter(entry => entry.payment_num % 12 === 0);
-    const xValues = Array.from({length: schedule.length}, (_, i) => i + 1);
+    // Create yearly data points from 0 to loan term
+    const xValues = Array.from({length: years + 1}, (_, i) => i);
     
-    // Calculate property value with appreciation
+    // Calculate property value with appreciation for each year
     const propertyValues = xValues.map(year => 
         purchasePrice * Math.pow(1 + appreciationRate, year)
     );
     
     // Get remaining loan balance at each year
-    const loanBalance = yearlyData.map(entry => entry.remaining_balance);
+    // Start with initial loan amount, then add yearly balances
+    const yearlyData = schedule.filter(entry => entry.payment_num % 12 === 0);
+    const loanBalance = [loanAmount, ...yearlyData.slice(0, years).map(entry => entry.remaining_balance)];
     
     // Calculate equity (property value - loan balance)
     const equity = propertyValues.map((value, index) => 
-        value - loanBalance[index]
+        value - (loanBalance[index] || 0)  // Use 0 if balance undefined (loan fully paid)
     );
     
     const data = [
@@ -806,20 +771,29 @@ function createEquityChart(loanData, investmentData) {
     ];
     
     const layout = {
-        title: 'Évolution des Fonds Propres',
+        title: {
+            text: 'Évolution des Fonds Propres',
+            font: { size: 16 }
+        },
         xaxis: {
             title: 'Années',
-            tickformat: 'd'
+            tickformat: 'd',
+            range: [0, years],
+            dtick: Math.ceil(years / 10)  // Show about 10 ticks on x-axis
         },
         yaxis: {
             title: 'Montant (€)',
-            tickformat: ',.0f'
+            tickformat: ',.0f',
+            range: [0, Math.max(...propertyValues)]
         },
         showlegend: true,
         legend: {
             x: 0,
             y: 1
-        }
+        },
+        margin: { t: 40, b: 60, l: 80, r: 40 },
+        height: 400,
+        autosize: true
     };
     
     Plotly.newPlot('equityChart', data, layout);
@@ -846,7 +820,10 @@ function createTaxImpactChart(investmentData) {
     }];
     
     const layout = {
-        title: 'Répartition de l\'Impact Fiscal Annuel',
+        title: {
+            text: 'Répartition de l\'Impact Fiscal Annuel',
+            font: { size: 16 }
+        },
         showlegend: true,
         legend: {
             x: 0,
@@ -890,7 +867,10 @@ function createReturnMetricsChart(investmentData, loanData) {
     ];
     
     const layout = {
-        title: 'Évolution des Métriques de Rentabilité',
+        title: {
+            text: 'Évolution des Métriques de Rentabilité',
+            font: { size: 16 }
+        },
         xaxis: {
             title: 'Années',
             tickformat: 'd'
