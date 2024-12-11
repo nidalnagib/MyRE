@@ -82,6 +82,90 @@ class InvestmentCalculator:
             'effective_tax_rate': (total_tax / annual_rental_income * 100) if annual_rental_income > 0 else 0
         }
     
+    def calculate_yearly_tax_impact(self, rental_income, expenses, loan_data, regime='micro_bic', tax_bracket=30):
+        """Calculate tax impact for each year of the investment, considering decreasing interest payments"""
+        tax_bracket_rate = tax_bracket / 100
+        yearly_tax_data = []
+        
+        # Calculate constant yearly depreciation
+        depreciation = self.calculate_depreciation(
+            expenses.get('purchase_price', 0),
+            expenses.get('notary_fees', 0)
+        )
+        yearly_depreciation = depreciation['total']
+        
+        # Get yearly expenses (excluding loan interest)
+        yearly_expenses = {
+            'management_fees': expenses.get('management_fees', 0) * 12,
+            'property_tax': expenses.get('property_tax', 0),  # Already annual
+            'insurance': expenses.get('insurance', 0) * 12,
+            'maintenance': expenses.get('maintenance', 0) * 12,
+            'condo_fees': expenses.get('condo_fees', 0) * 12,
+            'other': expenses.get('other', 0) * 12
+        }
+        constant_yearly_expenses = sum(yearly_expenses.values())
+        annual_rental_income = rental_income * 12
+        
+        if regime == 'micro_bic':
+            # Micro-BIC: flat 50% deduction, same every year
+            for year in range(loan_data['term_years']):
+                taxable_income = annual_rental_income * (1 - self.tax_regimes['micro_bic']['rate'])
+                income_tax = taxable_income * tax_bracket_rate
+                social_charges = taxable_income * self.social_charges_rate
+                
+                yearly_tax_data.append({
+                    'year': year + 1,
+                    'taxable_income': taxable_income,
+                    'income_tax': income_tax,
+                    'social_charges': social_charges,
+                    'total_tax': income_tax + social_charges,
+                    'deductions': annual_rental_income * self.tax_regimes['micro_bic']['rate'],
+                    'effective_tax_rate': ((income_tax + social_charges) / annual_rental_income * 100) if annual_rental_income > 0 else 0
+                })
+        else:  # régime réel
+            # Get yearly interest payments from amortization schedule
+            yearly_interest = []
+            current_year_interest = 0
+            payment_num = 0
+            
+            for entry in loan_data['amortization_schedule']:
+                current_year_interest += entry['interest']
+                payment_num += 1
+                
+                if payment_num % 12 == 0:
+                    yearly_interest.append(current_year_interest)
+                    current_year_interest = 0
+            
+            # Calculate tax impact for each year
+            for year in range(loan_data['term_years']):
+                # Total deductions for this year
+                year_interest = yearly_interest[year] if year < len(yearly_interest) else 0
+                total_deductions = (
+                    constant_yearly_expenses +
+                    yearly_depreciation +
+                    year_interest
+                )
+                
+                # Calculate taxable income (can't be negative in real life)
+                taxable_income = max(0, annual_rental_income - total_deductions)
+                income_tax = taxable_income * tax_bracket_rate
+                social_charges = taxable_income * self.social_charges_rate
+                
+                yearly_tax_data.append({
+                    'year': year + 1,
+                    'taxable_income': taxable_income,
+                    'income_tax': income_tax,
+                    'social_charges': social_charges,
+                    'total_tax': income_tax + social_charges,
+                    'deductions': total_deductions,
+                    'interest_deduction': year_interest,
+                    'depreciation_deduction': yearly_depreciation,
+                    'expenses_deduction': constant_yearly_expenses,
+                    'effective_tax_rate': ((income_tax + social_charges) / annual_rental_income * 100) if annual_rental_income > 0 else 0
+                })
+        
+        return yearly_tax_data
+    
     def calculate_total_roi(self, params, annual_cashflow, total_investment, loan_data=None):
         """Calculate comprehensive Return on Investment including all components"""
         # 1. Cash Flow Return (already annualized)
@@ -172,12 +256,23 @@ class InvestmentCalculator:
             'total_monthly': monthly_expenses.get('total_monthly', 0)
         }
         
+        # Calculate year-by-year tax impact
+        yearly_tax_data = self.calculate_yearly_tax_impact(
+            params['rental_income'],
+            {**params['expenses'], 
+             'purchase_price': params['purchase_price'],
+             'notary_fees': purchase_costs['notary_fees']},
+            params.get('loan_data', {'term_years': 20, 'amortization_schedule': []}),
+            params.get('tax_regime', 'micro_bic'),
+            params.get('tax_bracket', 30)
+        )
+        
         # Calculate total ROI with all components
         total_roi = self.calculate_total_roi(
             params,
             annual_cashflow,
             purchase_costs['total_cost'],
-            params.get('loan_data', None)
+            params.get('loan_data')
         )
         
         return {
@@ -190,6 +285,8 @@ class InvestmentCalculator:
             'roi_breakdown': total_roi['components'],
             'after_tax_roi': self.calculate_roi(after_tax_monthly_cashflow * 12, purchase_costs['total_cost']),
             'tax_impact': tax_impact,
+            'yearly_tax_data': yearly_tax_data,  # Include year-by-year tax data
             'expense_breakdown': expense_breakdown,
-            'rental_income': params['rental_income']
+            'rental_income': params['rental_income'],
+            'tax_regime': params.get('tax_regime', 'micro_bic')  # Include tax regime in response
         }

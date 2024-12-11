@@ -1,3 +1,12 @@
+// Format number function using French locale
+function formatNumber(value) {
+    return new Intl.NumberFormat('fr-FR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+        style: 'decimal'
+    }).format(value || 0) + ' €';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Calculate button handler
     document.getElementById('calculateButton').addEventListener('click', calculateAll);
@@ -39,78 +48,64 @@ async function calculateAll() {
         const interestRate = parseFloat(document.getElementById('interestRate').value) || 0;
         const loanTerm = parseInt(document.getElementById('loanTerm').value) || 25;
 
-        // Calculate monthly loan payment and interest if applicable
-        let monthlyLoanPayment = 0;
-        let monthlyInterest = 0;
-        if (loanAmount > 0 && interestRate > 0 && loanTerm > 0) {
-            const monthlyRate = interestRate / 1200; // Convert annual rate to monthly
-            const numPayments = loanTerm * 12;
-            monthlyLoanPayment = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
-                                (Math.pow(1 + monthlyRate, numPayments) - 1);
-            monthlyInterest = loanAmount * monthlyRate;
-        }
-
-        // Calculate investment metrics
-        const investmentData = {
-            purchase_price: purchasePrice,
-            notary_fees_rate: notaryFeesRate / 100,
-            rental_income: rentalIncome,
-            expenses: {
-                management_fees: charges.managementFees,
-                property_tax: charges.propertyTax,
-                insurance: charges.insurance,
-                maintenance: charges.maintenanceProvision,
-                condo_fees: charges.condoFees,
-                other: charges.otherCharges,
-                total_monthly: charges.total
-            },
-            tax_regime: taxRegime,
-            tax_bracket: taxBracket,
-            loan_interest: monthlyInterest
-        };
-
-        // Calculate loan metrics
-        const loanData = {
-            loan_amount: loanAmount,
-            interest_rate: interestRate / 100,
-            term_years: loanTerm,
-            personal_deposit: personalDeposit,
-            monthly_payment: monthlyLoanPayment
-        };
-
-        console.log('Investment Data sent:', investmentData);
-        console.log('Loan Data sent:', loanData);
-
-        // Make API calls in parallel
-        const [investmentResponse, loanResponse] = await Promise.all([
-            fetch('/api/calculate-investment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(investmentData)
-            }),
-            fetch('/api/calculate-loan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(loanData)
+        // First get loan calculation
+        const loanResponse = await fetch('/api/calculate-loan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                loan_amount: loanAmount,
+                interest_rate: interestRate / 100,
+                term_years: loanTerm,
+                personal_deposit: personalDeposit
             })
-        ]);
-
-        const investmentResult = await investmentResponse.json();
+        });
         const loanResult = await loanResponse.json();
 
-        console.log('Investment Result:', investmentResult);
-        console.log('Loan Result:', loanResult);
-
-        if (!investmentResponse.ok || !investmentResult.success) {
-            throw new Error(investmentResult.error || 'Investment calculation failed');
-        }
         if (!loanResponse.ok || !loanResult.success) {
             throw new Error(loanResult.error || 'Loan calculation failed');
         }
 
-        updateResults(investmentResult.data, loanResult.data);
-        document.getElementById('results').style.display = 'block'
+        // Then include loan data in investment calculation
+        const investmentResponse = await fetch('/api/calculate-investment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                purchase_price: purchasePrice,
+                notary_fees_rate: notaryFeesRate / 100,
+                rental_income: rentalIncome,
+                expenses: {
+                    management_fees: charges.managementFees,
+                    property_tax: charges.propertyTax,
+                    insurance: charges.insurance,
+                    maintenance: charges.maintenanceProvision,
+                    condo_fees: charges.condoFees,
+                    other: charges.otherCharges,
+                    total_monthly: charges.total
+                },
+                tax_regime: taxRegime,
+                tax_bracket: taxBracket,
+                loan_data: {
+                    term_years: loanResult.data.term_years,
+                    interest_rate: loanResult.data.interest_rate,
+                    monthly_payment: loanResult.data.monthly_payment,
+                    amortization_schedule: loanResult.data.amortization_schedule || []
+                }
+            })
+        });
+        const investmentResult = await investmentResponse.json();
 
+        if (!investmentResponse.ok || !investmentResult.success) {
+            throw new Error(investmentResult.error || 'Investment calculation failed');
+        }
+
+        console.log('Investment Result:', investmentResult);
+        console.log('Loan Result:', loanResult);
+        // Add debug logging for tax data
+        console.log('Tax Data:', investmentResult.data.yearly_tax_data);
+
+        updateResults(investmentResult.data, loanResult.data);
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         console.error('Error:', error);
         showError('Une erreur est survenue lors des calculs: ' + error.message);
@@ -120,6 +115,44 @@ async function calculateAll() {
 function updateResults(investmentData, loanData) {
     console.log('Updating results with:', { investmentData, loanData });
 
+    // Update loan results with loan data
+    updateLoanResults(loanData);
+    
+    // Update investment results
+    updateInvestmentResults({ investmentData, loanData });
+
+    // Create all charts
+    createAmortizationChart(loanData.amortization_schedule);
+    createEquityChart(loanData, investmentData);
+    createTaxImpactChart(investmentData);
+    createReturnMetricsChart(investmentData, loanData);
+    createExpensesChart(investmentData.expense_breakdown);
+    createCashflowChart(investmentData, loanData);
+}
+
+function updateLoanResults(data) {
+    // Update loan summary
+    const loanSummaryContent = document.getElementById('loanSummaryContent');
+    
+    loanSummaryContent.innerHTML = `
+        <div class="loan-details mb-3">
+            <p class="mb-2">Mensualité: ${formatNumber(data.monthly_payment)}</p>
+            <p class="mb-2">Remboursement annuel: ${formatNumber(data.monthly_payment * 12)}</p>
+            <p class="mb-2"><strong>Total des intérêts: ${formatNumber(data.total_interest)}</strong></p>
+            <p class="mb-2"><strong>Coût total de l'opération: ${formatNumber(data.total_cost)}</strong></p>
+        </div>
+    `;
+
+    // Show the loan summary div
+    document.getElementById('loanSummary').style.display = 'block';
+
+    // Create amortization schedule chart if we have schedule data
+    if (data.amortization_schedule && data.amortization_schedule.length > 0) {
+        createAmortizationChart(data.amortization_schedule);
+    }
+}
+
+function updateInvestmentResults({ investmentData, loanData }) {
     // Update financial summary
     const summaryHtml = `
         <div class="table-responsive">
@@ -226,14 +259,9 @@ function updateResults(investmentData, loanData) {
     `;
     
     document.getElementById('financialSummary').innerHTML = summaryHtml;
-    
-    // Create all charts
-    createAmortizationChart(loanData.amortization_schedule);
-    createEquityChart(loanData, investmentData);
-    createTaxImpactChart(investmentData);
-    createReturnMetricsChart(investmentData, loanData);
+
+    // Create expense breakdown chart
     createExpensesChart(investmentData.expense_breakdown);
-    createCashflowChart(investmentData, loanData);
 }
 
 function updateNotaryFees() {
@@ -257,19 +285,21 @@ function updateLoanAmount() {
     
     const totalCost = purchasePrice + notaryFees;
     const loanAmount = Math.max(0, totalCost - personalDeposit);
+    const depositPercentage = totalCost > 0 ? (personalDeposit / totalCost) * 100 : 0;
     
     document.getElementById('loanAmount').value = Math.round(loanAmount);
     
-    // Update loan summary
+    // Update loan details
     const loanSummary = document.getElementById('loanSummary');
-    const loanSummaryContent = document.getElementById('loanSummaryContent');
+    const loanDetailsContent = document.getElementById('loanDetailsContent');
     
     if (totalCost > 0) {
-        const depositPercentage = (personalDeposit / totalCost) * 100;
-        loanSummaryContent.innerHTML = `
-            <p>Coût total: ${totalCost.toLocaleString('fr-FR')} €</p>
-            <p>Apport: ${personalDeposit.toLocaleString('fr-FR')} € (${depositPercentage.toFixed(1)}%)</p>
-            <p>Montant du prêt: ${loanAmount.toLocaleString('fr-FR')} €</p>
+        loanDetailsContent.innerHTML = `
+            <div class="loan-details mb-3">
+                <p class="mb-2">Coût total: ${formatNumber(totalCost)}</p>
+                <p class="mb-2">Apport: ${formatNumber(personalDeposit)} (${depositPercentage.toFixed(1)}%)</p>
+                <p class="mb-2">Montant du prêt: ${formatNumber(loanAmount)}</p>
+            </div>
         `;
         loanSummary.style.display = 'block';
     } else {
@@ -377,69 +407,6 @@ async function calculateLoan() {
     }
 }
 
-function updateInvestmentResults(data) {
-    // Update financial summary
-    const summaryHtml = `
-        <div class="table-responsive">
-            <table class="table table-sm">
-                <tbody>
-                    <tr>
-                        <td>Prix d'achat</td>
-                        <td>${data.purchase_costs.purchase_price?.toLocaleString('fr-FR') || 0} €</td>
-                    </tr>
-                    <tr>
-                        <td>Frais de notaire</td>
-                        <td>${data.purchase_costs.notary_fees?.toLocaleString('fr-FR') || 0} €</td>
-                    </tr>
-                    <tr>
-                        <td>Coût total acquisition</td>
-                        <td>${data.purchase_costs.total_cost?.toLocaleString('fr-FR') || 0} €</td>
-                    </tr>
-                    <tr class="table-info">
-                        <td>Cash-flow mensuel</td>
-                        <td>${data.monthly_cashflow?.toLocaleString('fr-FR') || 0} €</td>
-                    </tr>
-                    <tr>
-                        <td>Cash-flow annuel</td>
-                        <td>${data.annual_cashflow?.toLocaleString('fr-FR') || 0} €</td>
-                    </tr>
-                    <tr class="table-primary">
-                        <td><strong>Rentabilité Totale (ROI)</strong></td>
-                        <td><strong>${data.roi?.toFixed(2) || 0}%</strong></td>
-                    </tr>
-                    <tr class="table-light">
-                        <td colspan="2"><strong>Détail de la rentabilité</strong></td>
-                    </tr>
-                    <tr>
-                        <td style="padding-left: 2rem;">ROI Cash-flow</td>
-                        <td>${data.roi_breakdown?.cash_flow?.toFixed(2) || 0}%</td>
-                    </tr>
-                    <tr>
-                        <td style="padding-left: 2rem;">ROI Remboursement capital</td>
-                        <td>${data.roi_breakdown?.principal_paydown?.toFixed(2) || 0}%</td>
-                    </tr>
-                    <tr>
-                        <td style="padding-left: 2rem;">ROI Plus-value</td>
-                        <td>${data.roi_breakdown?.appreciation?.toFixed(2) || 0}%</td>
-                    </tr>
-                    <tr>
-                        <td style="padding-left: 2rem;">ROI Avantages fiscaux</td>
-                        <td>${data.roi_breakdown?.tax_benefits?.toFixed(2) || 0}%</td>
-                    </tr>
-                    <tr>
-                        <td>Revenu imposable (${data.tax_impact.regime})</td>
-                        <td>${data.tax_impact.taxable_income?.toLocaleString('fr-FR') || 0} €</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    `;
-    
-    document.getElementById('financialSummary').innerHTML = summaryHtml;
-
-    // Create expense breakdown chart
-    createExpensesChart(data.expense_breakdown);
-}
 
 function createExpensesChart(monthlyCharges) {
     // Create expense breakdown pie chart
@@ -474,10 +441,18 @@ function createExpensesChart(monthlyCharges) {
         },
         margin: { t: 40, b: 80, l: 40, r: 40 },
         height: 400,
-        autosize: true
+        width: null,
+        autosize: true,
+        responsive: true
     };
 
-    Plotly.newPlot('expensesChart', [expenseTrace], expenseLayout);
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false
+    };
+
+    Plotly.newPlot('expensesChart', [expenseTrace], expenseLayout, config);
 }
 
 async function calculateInvestment() {
@@ -555,84 +530,16 @@ async function calculateLoan() {
     }
 }
 
-function updateLoanResults(data) {
-    // Update loan summary
-    const loanSummaryContent = document.getElementById('loanSummaryContent');
-    loanSummaryContent.innerHTML = `
-        <div class="table-responsive">
-            <table class="table table-sm">
-                <tbody>
-                    <tr>
-                        <td>Mensualité</td>
-                        <td>${data.monthly_payment?.toLocaleString('fr-FR') || 0} €</td>
-                    </tr>
-                    <tr>
-                        <td>Coût total du crédit</td>
-                        <td>${data.total_interest?.toLocaleString('fr-FR') || 0} €</td>
-                    </tr>
-                    <tr>
-                        <td>Coût total de l'opération</td>
-                        <td>${data.total_cost?.toLocaleString('fr-FR') || 0} €</td>
-                    </tr>
-                    <tr>
-                        <td>Remboursement annuel</td>
-                        <td>${data.annual_payment?.toLocaleString('fr-FR') || 0} €</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    `;
-
-    // Create amortization schedule chart
-    const schedule = data.amortization_schedule || [];
-    const years = Array.from({length: schedule.length}, (_, i) => i + 1);
-    
-    const principalTrace = {
-        name: 'Capital remboursé',
-        x: years,
-        y: schedule.map(entry => entry?.total_principal || 0),
-        type: 'scatter',
-        mode: 'lines',
-        line: { color: '#4CAF50' }
-    };
-    
-    const interestTrace = {
-        name: 'Intérêts payés',
-        x: years,
-        y: schedule.map(entry => entry?.total_interest || 0),
-        type: 'scatter',
-        mode: 'lines',
-        line: { color: '#FF5252' }
-    };
-    
-    const layout = {
-        title: {
-            text: 'Tableau d\'Amortissement',
-            font: { size: 16 }
-        },
-        xaxis: {
-            title: 'Mois',
-            dtick: 12
-        },
-        yaxis: {
-            title: 'Montant (€)',
-            tickformat: ',.0f'
-        },
-        showlegend: true,
-        legend: {
-            x: 0,
-            y: 1.1,
-            orientation: 'h'
-        },
-        margin: { t: 60, b: 40, l: 60, r: 40 },
-        height: 400,
-        autosize: true
-    };
-    
-    Plotly.newPlot('amortizationChart', [principalTrace, interestTrace], layout);
-}
-
 function createCashflowChart(investmentData, loanData) {
+    // Format number function using French locale
+    const formatNumber = (value) => {
+        return new Intl.NumberFormat('fr-FR', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+            style: 'decimal'
+        }).format(Math.abs(value)) + ' €';
+    };
+
     // Prepare data for waterfall chart
     const items = [
         { name: 'Loyer', value: investmentData.rental_income, color: '#28a745' },  // Green for income
@@ -656,7 +563,7 @@ function createCashflowChart(investmentData, loanData) {
         measure: filteredItems.map((_, i) => i === filteredItems.length - 1 ? "total" : "relative"),
         x: filteredItems.map(item => item.name),
         textposition: "outside",
-        text: filteredItems.map(item => Math.abs(item.value).toLocaleString('fr-FR') + ' €'),
+        text: filteredItems.map(item => formatNumber(item.value)),
         y: filteredItems.map(item => item.value),
         connector: {
             line: {
@@ -679,11 +586,239 @@ function createCashflowChart(investmentData, loanData) {
         },
         yaxis: {
             title: 'Euros (€)',
-            tickformat: ',.0f',
-            automargin: true
+            tickformat: ' ,.0f',  // Space before comma for French thousands separator
+            automargin: true,
+            hoverformat: ' ,.0f €'  // Consistent hover format
         },
         showlegend: false,
-        margin: { t: 40, b: 80, l: 60, r: 40 },
+        margin: { t: 40, b: 80, l: 40, r: 40 },
+        height: 400,
+        width: null,
+        autosize: true,
+        responsive: true
+    };
+
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtons: [['zoom2d', 'pan2d', 'resetScale2d', 'toImage']]
+    };
+
+    Plotly.newPlot('cashflowChart', [trace], layout, config);
+}
+
+function createTaxImpactChart(investmentData) {
+    // Validate input data
+    if (!investmentData || !investmentData.yearly_tax_data || !Array.isArray(investmentData.yearly_tax_data)) {
+        console.error('Invalid investment data for tax impact chart:', investmentData);
+        return;
+    }
+
+    const yearlyData = investmentData.yearly_tax_data;
+    const regime = investmentData.tax_regime;  // Get tax regime from response
+    console.log('Creating tax impact chart with regime:', regime);  // Debug log
+    
+    // Prepare data arrays
+    const years = yearlyData.map(d => d.year);
+    const annualRentalIncome = yearlyData.map(d => investmentData.rental_income * 12); // Convert monthly to annual
+    
+    const data = [];
+    
+    // Add rental income bar (positive)
+    data.push({
+        x: years,
+        y: annualRentalIncome,
+        name: 'Revenu Locatif',
+        type: 'bar',
+        marker: { color: '#2ecc71' }  // Green
+    });
+    
+    if (regime === 'reel') {
+        // Add deduction bars for Régime Réel (negative)
+        const expensesDeduction = yearlyData.map(d => -d.expenses_deduction);
+        const interestDeduction = yearlyData.map(d => -d.interest_deduction);
+        const depreciationDeduction = yearlyData.map(d => -d.depreciation_deduction);
+
+        // Only add bars if they have non-zero values
+        if (expensesDeduction.some(v => v !== 0)) {
+            data.push({
+                x: years,
+                y: expensesDeduction,
+                name: 'Charges',
+                type: 'bar',
+                marker: { color: '#e74c3c' }  // Red
+            });
+        }
+
+        if (interestDeduction.some(v => v !== 0)) {
+            data.push({
+                x: years,
+                y: interestDeduction,
+                name: 'Intérêts',
+                type: 'bar',
+                marker: { color: '#3498db' }  // Blue
+            });
+        }
+
+        if (depreciationDeduction.some(v => v !== 0)) {
+            data.push({
+                x: years,
+                y: depreciationDeduction,
+                name: 'Amortissements',
+                type: 'bar',
+                marker: { color: '#f1c40f' }  // Yellow
+            });
+        }
+    } else {
+        // Add single flat deduction bar for Micro-BIC (negative)
+        const flatDeduction = annualRentalIncome.map(income => -income * 0.5);  // 50% flat deduction
+        data.push({
+            x: years,
+            y: flatDeduction,
+            name: 'Abattement 50%',
+            type: 'bar',
+            marker: { color: '#e74c3c' }  // Red
+        });
+    }
+    
+    // Add taxable income line
+    data.push({
+        x: years,
+        y: yearlyData.map(d => d.taxable_income),
+        name: 'Revenu Net Imposable',
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: '#8e44ad', width: 3 },  // Purple
+        marker: { size: 8 }
+    });
+    
+    // Add total tax line
+    data.push({
+        x: years,
+        y: yearlyData.map(d => d.total_tax),
+        name: 'Impôts Totaux',
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: '#e67e22', width: 3 },  // Orange
+        marker: { size: 8 }
+    });
+    
+    // Add effective tax rate line on secondary axis
+    data.push({
+        x: years,
+        y: yearlyData.map(d => d.effective_tax_rate),
+        name: 'Taux Effectif (%)',
+        type: 'scatter',
+        yaxis: 'y2',
+        mode: 'lines+markers',
+        line: { color: '#16a085', width: 3, dash: 'dot' },  // Turquoise
+        marker: { size: 8 }
+    });
+    
+    const layout = {
+        title: {
+            text: 'Impact Fiscal par Année',
+            font: { size: 16 }
+        },
+        barmode: 'relative',  // For stacking positive and negative bars
+        xaxis: {
+            title: 'Année',
+            tickmode: 'linear'
+        },
+        yaxis: {
+            title: 'Montant (€)',
+            tickformat: ',.0f',
+            side: 'left'
+        },
+        yaxis2: {
+            title: 'Taux Effectif (%)',
+            tickformat: ',.1f',
+            overlaying: 'y',
+            side: 'right',
+            rangemode: 'tozero'
+        },
+        showlegend: true,
+        legend: {
+            x: 0,
+            y: 1.2,
+            orientation: 'h'
+        },
+        margin: { t: 60, b: 40, l: 60, r: 60 },
+        height: 400,
+        width: null,
+        autosize: true,
+        responsive: true
+    };
+    
+    const config = {
+        responsive: true,
+        displaylogo: false,
+        modeBarButtons: [['zoom2d', 'pan2d', 'resetScale2d', 'toImage']]
+    };
+    
+    try {
+        Plotly.newPlot('taxChart', data, layout, config);
+    } catch (error) {
+        console.error('Error creating tax impact chart:', error);
+    }
+}
+
+function createReturnMetricsChart(investmentData, loanData) {
+    const years = loanData.term_years;
+    const xValues = Array.from({length: years}, (_, i) => i + 1);
+    
+    // Calculate metrics over time
+    const cashOnCash = xValues.map(() => 
+        (investmentData.after_tax_annual_cashflow / loanData.personal_deposit) * 100
+    );
+    
+    const totalROI = xValues.map(year => 
+        investmentData.after_tax_roi + (2 * year) // Adding 2% appreciation per year
+    );
+    
+    const data = [
+        {
+            x: xValues,
+            y: cashOnCash,
+            name: 'Cash-on-Cash Return',
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: '#3498db' }
+        },
+        {
+            x: xValues,
+            y: totalROI,
+            name: 'ROI Total (avec appréciation)',
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: '#2ecc71' }
+        }
+    ];
+    
+    const layout = {
+        title: {
+            text: 'Évolution des Métriques de Rentabilité',
+            font: { size: 16 }
+        },
+        xaxis: {
+            title: 'Années',
+            tickformat: 'd',
+            automargin: true
+        },
+        yaxis: {
+            title: 'Pourcentage (%)',
+            tickformat: ',.1f',
+            automargin: true
+        },
+        showlegend: true,
+        legend: {
+            x: 0,
+            y: 1,
+            xanchor: 'left',
+            yanchor: 'top'
+        },
+        margin: { t: 40, b: 60, l: 80, r: 40 },
         height: 400,
         width: null,
         autosize: true,
@@ -696,7 +831,7 @@ function createCashflowChart(investmentData, loanData) {
         displaylogo: false
     };
 
-    Plotly.newPlot('cashflowChart', [trace], layout, config);
+    Plotly.newPlot('returnMetricsChart', data, layout, config);
 }
 
 function createAmortizationChart(schedule) {
@@ -752,7 +887,7 @@ function createEquityChart(loanData, investmentData) {
     const schedule = loanData.amortization_schedule;
     
     // Create yearly data points from 0 to loan term
-    const xValues = Array.from({length: years + 1}, (_, i) => i);
+    const xValues = Array.from({length: years}, (_, i) => i);
     
     // Calculate property value with appreciation for each year
     const propertyValues = xValues.map(year => 
@@ -835,124 +970,6 @@ function createEquityChart(loanData, investmentData) {
     };
 
     Plotly.newPlot('equityChart', data, layout, config);
-}
-
-function createTaxImpactChart(investmentData) {
-    const taxData = investmentData.tax_impact;
-    
-    const data = [{
-        values: [
-            taxData.income_tax,
-            taxData.social_charges,
-            taxData.taxable_income - taxData.total_tax
-        ],
-        labels: [
-            'Impôt sur le revenu',
-            'Prélèvements sociaux',
-            'Revenu net après impôts'
-        ],
-        type: 'pie',
-        marker: {
-            colors: ['#e74c3c', '#f39c12', '#2ecc71']
-        }
-    }];
-    
-    const layout = {
-        title: {
-            text: 'Répartition de l\'Impact Fiscal Annuel',
-            font: { size: 16 }
-        },
-        showlegend: true,
-        legend: {
-            x: 0,
-            y: 1,
-            xanchor: 'left',
-            yanchor: 'top'
-        },
-        margin: { t: 40, b: 40, l: 40, r: 40 },
-        height: 400,
-        width: null,
-        autosize: true,
-        responsive: true
-    };
-
-    const config = {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false
-    };
-
-    Plotly.newPlot('taxChart', data, layout, config);
-}
-
-function createReturnMetricsChart(investmentData, loanData) {
-    const years = loanData.term_years;
-    const xValues = Array.from({length: years}, (_, i) => i + 1);
-    
-    // Calculate metrics over time
-    const cashOnCash = xValues.map(() => 
-        (investmentData.after_tax_annual_cashflow / loanData.personal_deposit) * 100
-    );
-    
-    const totalROI = xValues.map(year => 
-        investmentData.after_tax_roi + (2 * year) // Adding 2% appreciation per year
-    );
-    
-    const data = [
-        {
-            x: xValues,
-            y: cashOnCash,
-            name: 'Cash-on-Cash Return',
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: '#3498db' }
-        },
-        {
-            x: xValues,
-            y: totalROI,
-            name: 'ROI Total (avec appréciation)',
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: '#2ecc71' }
-        }
-    ];
-    
-    const layout = {
-        title: {
-            text: 'Évolution des Métriques de Rentabilité',
-            font: { size: 16 }
-        },
-        xaxis: {
-            title: 'Années',
-            tickformat: 'd',
-            automargin: true
-        },
-        yaxis: {
-            title: 'Pourcentage (%)',
-            tickformat: ',.1f',
-            automargin: true
-        },
-        showlegend: true,
-        legend: {
-            x: 0,
-            y: 1,
-            xanchor: 'left',
-            yanchor: 'top'
-        },
-        margin: { t: 40, b: 60, l: 80, r: 40 },
-        height: 400,
-        width: null,
-        autosize: true,
-        responsive: true
-    };
-
-    const config = {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false
-    };
-
-    Plotly.newPlot('returnMetricsChart', data, layout, config);
 }
 
 function showError(message) {
