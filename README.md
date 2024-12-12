@@ -4,12 +4,19 @@ Une application web complète pour l'analyse d'investissements immobiliers en Fr
 
 ## Fonctionnalités
 
-- Analyse détaillée des investissements immobiliers
-- Calcul de rentabilité et cash-flow
-- Support des différentes structures juridiques (LMNP, SCI, etc.)
-- Visualisation des données avec graphiques interactifs
-- Calcul d'amortissement de prêt
-- Interface utilisateur en français
+- Calcul détaillé des coûts d'acquisition (prix d'achat, frais de notaire)
+- Simulation de prêt immobilier avec tableau d'amortissement
+- Analyse des charges mensuelles et annuelles
+- Calcul de rentabilité avec décomposition (cash-flow, remboursement capital, plus-value)
+- Support des régimes fiscaux (Micro-BIC et Réel)
+- Calcul d'impact fiscal détaillé (IR, prélèvements sociaux)
+- Visualisations interactives :
+  - Répartition des charges
+  - Impact fiscal par année
+  - Évolution du cash-flow
+  - Tableau d'amortissement
+  - Évolution des fonds propres
+  - Métriques de rentabilité
 
 ## Prérequis
 
@@ -36,13 +43,6 @@ venv\Scripts\activate     # Sur Windows
 pip install -r requirements.txt
 ```
 
-## Configuration
-
-1. Créer un fichier `.env` à la racine du projet :
-```
-SECRET_KEY=votre-clé-secrète
-```
-
 ## Lancement
 
 1. Démarrer l'application :
@@ -63,20 +63,53 @@ http://localhost:5000
 ├── requirements.txt       # Dépendances Python
 ├── README.md             # Documentation
 ├── models/
-│   ├── investment_calculator.py    # Calculs d'investissement
-│   └── loan_calculator.py         # Calculs de prêt
+│   ├── investment_calculator.py    # Calculs d'investissement et fiscalité
+│   └── loan_calculator.py         # Calculs de prêt et amortissement
 ├── templates/
-│   └── index.html        # Template frontend principal
-├── static/
-│   ├── css/             # Styles personnalisés
-│   └── js/              # JavaScript personnalisé
-└── logs/
-    └── myre.log         # Logs de l'application
+│   └── index.html        # Interface utilisateur principale
+└── static/
+    ├── css/             # Styles Bootstrap et personnalisés
+    └── js/
+        ├── main.js      # Logique principale et graphiques
+        └── investment.js # Calculs côté client
 ```
+
+## Fonctionnement
+
+1. **Saisie des données** :
+   - Prix d'achat et frais de notaire
+   - Conditions du prêt (montant, taux, durée)
+   - Revenus locatifs et charges
+   - Régime fiscal et tranche d'imposition
+
+2. **Calculs automatiques** :
+   - Mensualités du prêt
+   - Cash-flow avant/après impôts
+   - Rentabilité globale et détaillée
+   - Impact fiscal annuel
+
+3. **Visualisations** :
+   - Graphiques interactifs pour chaque aspect
+   - Mises à jour en temps réel
+   - Format adapté à l'impression
+
+## Régimes Fiscaux Supportés
+
+### Micro-BIC
+- Abattement forfaitaire de 50%
+- Calcul simplifié des impôts
+
+### Régime Réel
+- Déduction des charges réelles
+- Amortissement du bien
+- Déduction des intérêts d'emprunt
 
 ## Contribution
 
-Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou à soumettre une pull request.
+Les contributions sont les bienvenues ! N'hésitez pas à :
+- Signaler des bugs
+- Proposer des améliorations
+- Soumettre des pull requests
 
 ## Licence
 
