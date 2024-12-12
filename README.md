@@ -1,5 +1,17 @@
 # MyRE - Analyse d'Investissement Immobilier
 
+## ⚠️ Avertissement Important
+
+Cette application est fournie à titre informatif uniquement et ne constitue en aucun cas un conseil en investissement ou un conseil fiscal. Les calculs et simulations présentés sont des estimations basées sur les informations fournies et peuvent ne pas refléter avec précision votre situation particulière.
+
+**Avant toute décision d'investissement :**
+- Consultez un conseiller fiscal pour une analyse personnalisée de votre situation
+- Faites appel à un expert-comptable pour valider vos calculs de rentabilité
+- Vérifiez auprès d'un notaire les aspects juridiques et fiscaux spécifiques à votre cas
+- Contactez un courtier pour une simulation précise de prêt immobilier
+
+Les auteurs de cette application déclinent toute responsabilité quant aux décisions prises sur la base des résultats fournis.
+
 Une application web complète pour l'analyse d'investissements immobiliers en France.
 
 ## Fonctionnalités
