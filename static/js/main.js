@@ -439,16 +439,12 @@ function createExpensesChart(monthlyCharges) {
     };
 
     const expenseLayout = {
-        title: {
-            text: 'Répartition des Charges',
-            font: { size: 16 }
-        },
         showlegend: true,
         legend: {
             orientation: 'h',
             y: -0.2
         },
-        margin: { t: 40, b: 80, l: 40, r: 40 },
+        margin: { t: 20, b: 80, l: 40, r: 40 },
         height: 400,
         width: null,
         autosize: true,
@@ -585,10 +581,6 @@ function createCashflowChart(investmentData, loanData) {
     };
 
     const layout = {
-        title: {
-            text: 'Décomposition du Cash-flow Mensuel',
-            font: { size: 16 }
-        },
         xaxis: {
             type: 'category',
             tickangle: -45
@@ -600,7 +592,7 @@ function createCashflowChart(investmentData, loanData) {
             hoverformat: ' ,.0f €'  // Consistent hover format
         },
         showlegend: false,
-        margin: { t: 40, b: 80, l: 40, r: 40 },
+        margin: { t: 20, b: 80, l: 40, r: 40 },
         height: 400,
         width: null,
         autosize: true,
@@ -726,15 +718,17 @@ function createTaxImpactChart(investmentData) {
     });
     
     const layout = {
-        title: {
-            text: 'Impact Fiscal par Année',
-            font: { size: 16 }
+        barmode: 'relative',
+        showlegend: true,
+        legend: {
+            orientation: 'h',
+            y: -0.2
         },
-        barmode: 'relative',  // For stacking positive and negative bars
-        xaxis: {
-            title: 'Année',
-            tickmode: 'linear'
-        },
+        margin: { t: 20, b: 80, l: 40, r: 40 },
+        height: 400,
+        width: null,
+        autosize: true,
+        responsive: true,
         yaxis: {
             title: 'Montant (€)',
             tickformat: ',.0f',
@@ -746,18 +740,7 @@ function createTaxImpactChart(investmentData) {
             overlaying: 'y',
             side: 'right',
             rangemode: 'tozero'
-        },
-        showlegend: true,
-        legend: {
-            x: 0,
-            y: 1.2,
-            orientation: 'h'
-        },
-        margin: { t: 60, b: 40, l: 60, r: 60 },
-        height: 400,
-        width: null,
-        autosize: true,
-        responsive: true
+        }
     };
     
     const config = {
@@ -807,10 +790,16 @@ function createReturnMetricsChart(investmentData, loanData) {
     ];
     
     const layout = {
-        title: {
-            text: 'Évolution des Métriques de Rentabilité',
-            font: { size: 16 }
+        showlegend: true,
+        legend: {
+            orientation: 'h',
+            y: -0.2
         },
+        margin: { t: 20, b: 80, l: 40, r: 40 },
+        height: 400,
+        width: null,
+        autosize: true,
+        responsive: true,
         xaxis: {
             title: 'Années',
             tickformat: 'd',
@@ -820,19 +809,7 @@ function createReturnMetricsChart(investmentData, loanData) {
             title: 'Pourcentage (%)',
             tickformat: ',.1f',
             automargin: true
-        },
-        showlegend: true,
-        legend: {
-            x: 0,
-            y: 1,
-            xanchor: 'left',
-            yanchor: 'top'
-        },
-        margin: { t: 40, b: 60, l: 80, r: 40 },
-        height: 400,
-        width: null,
-        autosize: true,
-        responsive: true
+        }
     };
 
     const config = {
@@ -860,10 +837,16 @@ function createAmortizationChart(schedule) {
     };
 
     const layout = {
-        title: {
-            text: 'Tableau d\'Amortissement',
-            font: { size: 16 }
+        showlegend: true,
+        legend: {
+            orientation: 'h',
+            y: -0.2
         },
+        margin: { t: 20, b: 80, l: 40, r: 40 },
+        height: 400,
+        width: null,
+        autosize: true,
+        responsive: true,
         xaxis: {
             title: 'Numéro de paiement',
             automargin: true
@@ -872,12 +855,7 @@ function createAmortizationChart(schedule) {
             title: 'Euros (€)',
             automargin: true,
             tickformat: ',.0f'
-        },
-        margin: { t: 40, b: 60, l: 80, r: 40 },
-        height: 400,
-        width: null,
-        autosize: true,
-        responsive: true
+        }
     };
 
     const config = {
@@ -942,10 +920,16 @@ function createEquityChart(loanData, investmentData) {
     ];
     
     const layout = {
-        title: {
-            text: 'Évolution des Fonds Propres',
-            font: { size: 16 }
+        showlegend: true,
+        legend: {
+            orientation: 'h',
+            y: -0.2
         },
+        margin: { t: 20, b: 80, l: 40, r: 40 },
+        height: 400,
+        width: null,
+        autosize: true,
+        responsive: true,
         xaxis: {
             title: 'Années',
             tickformat: 'd',
@@ -958,19 +942,7 @@ function createEquityChart(loanData, investmentData) {
             tickformat: ',.0f',
             range: [0, Math.max(...propertyValues)],
             automargin: true
-        },
-        showlegend: true,
-        legend: {
-            x: 0,
-            y: 1,
-            xanchor: 'left',
-            yanchor: 'top'
-        },
-        margin: { t: 40, b: 60, l: 80, r: 40 },
-        height: 400,
-        width: null,
-        autosize: true,
-        responsive: true
+        }
     };
 
     const config = {
