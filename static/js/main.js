@@ -413,10 +413,19 @@ function createExpensesChart(monthlyCharges) {
     const expenseValues = [];
     const expenseNames = [];
     
+    const expenseLabels = {
+        management_fees: 'Frais de gestion',
+        property_tax: 'Taxe foncière',
+        insurance: 'Assurance',
+        maintenance: 'Entretien',
+        condo_fees: 'Charges copropriété',
+        other: 'Autres charges'
+    };
+    
     for (const [key, value] of Object.entries(monthlyCharges)) {
-        if (key !== 'total' && value > 0) {
+        if (key !== 'total' && key !== 'total_monthly' && value > 0) {  
             expenseValues.push(value);
-            expenseNames.push(key);
+            expenseNames.push(expenseLabels[key] || key);
         }
     }
 
@@ -448,7 +457,7 @@ function createExpensesChart(monthlyCharges) {
 
     const config = {
         responsive: true,
-        displayModeBar: true,
+        displayModeBar: false,
         displaylogo: false
     };
 
@@ -600,7 +609,7 @@ function createCashflowChart(investmentData, loanData) {
 
     const config = {
         responsive: true,
-        displayModeBar: true,
+        displayModeBar: false,
         displaylogo: false,
         modeBarButtons: [['zoom2d', 'pan2d', 'resetScale2d', 'toImage']]
     };
@@ -753,6 +762,7 @@ function createTaxImpactChart(investmentData) {
     
     const config = {
         responsive: true,
+        displayModeBar: false,
         displaylogo: false,
         modeBarButtons: [['zoom2d', 'pan2d', 'resetScale2d', 'toImage']]
     };
@@ -827,7 +837,7 @@ function createReturnMetricsChart(investmentData, loanData) {
 
     const config = {
         responsive: true,
-        displayModeBar: true,
+        displayModeBar: false,
         displaylogo: false
     };
 
@@ -872,7 +882,7 @@ function createAmortizationChart(schedule) {
 
     const config = {
         responsive: true,
-        displayModeBar: true,
+        displayModeBar: false,
         displaylogo: false
     };
 
@@ -965,7 +975,7 @@ function createEquityChart(loanData, investmentData) {
 
     const config = {
         responsive: true,
-        displayModeBar: true,
+        displayModeBar: false,
         displaylogo: false
     };
 
