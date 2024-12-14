@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Génération de Quittances de Loyer - MyRE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">MyRE - Analyse Immobilière</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Analyse</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/receipts">Quittances</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="card">
+            <div class="card-header">
+                <h2>Générer une quittance de loyer</h2>
+            </div>
+            <div class="card-body">
+                <form id="rentReceiptForm" class="mt-4">
+                    <div class="row">
+                        <!-- Landlord Information -->
+                        <div class="col-md-6">
+                            <h4>Informations du propriétaire</h4>
+                            <div class="mb-3">
+                                <label for="landlordName" class="form-label">Nom du propriétaire</label>
+                                <input type="text" class="form-control" id="landlordName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="landlordAddress" class="form-label">Adresse du propriétaire</label>
+                                <textarea class="form-control" id="landlordAddress" rows="2" required></textarea>
+                                <div class="form-text">
+                                    Format attendu :<br>
+                                    Numéro et nom de rue<br>
+                                    Code postal Ville<br>
+                                    <small class="text-muted">
+                                        Exemple :<br>
+                                        123 Rue de la République<br>
+                                        75001 Paris
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tenant Information -->
+                        <div class="col-md-6">
+                            <h4>Informations du locataire</h4>
+                            <div class="mb-3">
+                                <label for="tenantName" class="form-label">Nom du locataire</label>
+                                <input type="text" class="form-control" id="tenantName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="propertyAddress" class="form-label">Adresse du bien loué</label>
+                                <textarea class="form-control" id="propertyAddress" rows="2" required></textarea>
+                                <div class="form-text">
+                                    Format attendu :<br>
+                                    Numéro et nom de rue<br>
+                                    Code postal Ville<br>
+                                    <small class="text-muted">
+                                        Exemple :<br>
+                                        123 Rue de la République<br>
+                                        75001 Paris
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <!-- Payment Information -->
+                        <div class="col-md-6">
+                            <h4>Informations de paiement</h4>
+                            <div class="mb-3">
+                                <label for="rentAmount" class="form-label">Montant du loyer (€)</label>
+                                <input type="number" class="form-control" id="rentAmount" step="0.01" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="period" class="form-label">Période</label>
+                                <input type="month" class="form-control" id="period" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="paymentDate" class="form-label">Date de paiement</label>
+                                <input type="date" class="form-control" id="paymentDate" required>
+                            </div>
+                        </div>
+
+                        <!-- Optional Charges -->
+                        <div class="col-md-6">
+                            <h4>Charges (optionnel)</h4>
+                            <div id="chargesContainer">
+                                <!-- Charges will be added dynamically -->
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addCharge">
+                                + Ajouter une charge
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">Générer la quittance</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/receipts.js') }}"></script>
+</body>
+</html>
