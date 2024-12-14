@@ -114,10 +114,72 @@
 
                     <div class="row mt-4">
                         <div class="col-12">
+                            <button type="button" class="btn btn-secondary me-2" id="previewButton">Aperçu</button>
                             <button type="submit" class="btn btn-primary">Générer la quittance</button>
                         </div>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Aperçu de la quittance</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="receipt-preview">
+                        <!-- Header -->
+                        <div class="text-end mb-4">
+                            <p><span id="preview-city"></span>, le <span id="preview-date"></span></p>
+                        </div>
+
+                        <!-- Landlord Info -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold">PROPRIÉTAIRE</h6>
+                            <p class="mb-0" id="preview-landlord-name"></p>
+                            <p id="preview-landlord-address"></p>
+                        </div>
+
+                        <!-- Tenant Info -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold">LOCATAIRE</h6>
+                            <p class="mb-0" id="preview-tenant-name"></p>
+                            <p id="preview-tenant-address"></p>
+                        </div>
+
+                        <!-- Receipt Content -->
+                        <div class="mb-4">
+                            <p>Je soussigné(e) <span id="preview-landlord-name-2"></span>, propriétaire du logement situé 
+                            <span id="preview-property-address"></span>, déclare avoir reçu de 
+                            <span id="preview-tenant-name-2"></span> la somme de 
+                            <span id="preview-rent-amount"></span> (<span id="preview-rent-amount-letters"></span>)
+                            au titre du loyer et des charges pour la période de <span id="preview-period"></span>.</p>
+                        </div>
+
+                        <!-- Charges if any -->
+                        <div id="preview-charges-section" class="mb-4" style="display: none;">
+                            <h6 class="fw-bold">DÉTAIL DES CHARGES</h6>
+                            <div id="preview-charges-list"></div>
+                            <p class="mt-2">Total des charges : <span id="preview-total-charges"></span> 
+                            (<span id="preview-total-charges-letters"></span>)</p>
+                        </div>
+
+                        <!-- Total -->
+                        <div class="mb-4">
+                            <p class="fw-bold">TOTAL : <span id="preview-total-amount"></span> 
+                            (<span id="preview-total-amount-letters"></span>)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Modifier</button>
+                    <button type="button" class="btn btn-primary" id="generateFromPreview">Générer PDF</button>
+                </div>
             </div>
         </div>
     </div>

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, send_file
+from flask import Flask, render_template, jsonify, request, send_file, send_from_directory
 from logging.config import dictConfig
 import os
 import logging
@@ -95,9 +95,63 @@ def generate_receipt():
             if field not in data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
 
-        # Create generated_receipts directory if it doesn't exist
-        receipts_dir = os.path.join(app.static_folder, 'generated_receipts')
-        os.makedirs(receipts_dir, exist_ok=True)
+        # Initialize receipt generator with template
+        template_path = os.path.join(app.static_folder, 'modele_quittance_de_loyer.docx')
+        if not os.path.exists(template_path):
+            return jsonify({'error': 'Template file not found'}), 500
+
+        receipt_generator = RentReceipt(template_path)
+
+        try:
+            # Generate the receipt
+            pdf_path = receipt_generator.generate_receipt(
+                landlord_name=data['landlord_name'],
+                landlord_address=data['landlord_address'],
+                tenant_name=data['tenant_name'],
+                property_address=data['property_address'],
+                rent_amount=float(data['rent_amount']),
+                payment_date=data['payment_date'],
+                period=data['period'],
+                charges={charge['description']: float(charge['amount']) for charge in data.get('charges', [])} if data.get('charges') else None
+            )
+
+            # Get the relative path for download
+            relative_path = os.path.relpath(pdf_path, app.static_folder)
+            return jsonify({'pdf_path': relative_path})
+
+        except Exception as e:
+            app.logger.error(f"Error in receipt generation: {str(e)}")
+            return jsonify({'error': f'Error generating receipt: {str(e)}'}), 500
+
+    except Exception as e:
+        app.logger.error(f"Error in request handling: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/download/<path:filename>')
+def download_file(filename):
+    try:
+        # Ensure the file exists and is within the static folder
+        file_path = os.path.join(app.static_folder, filename)
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+
+        directory = os.path.dirname(file_path)
+        return send_from_directory(directory, os.path.basename(file_path), as_attachment=True)
+    except Exception as e:
+        app.logger.error(f"Error in file download: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/receipts/format', methods=['POST'])
+def format_receipt():
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['landlord_name', 'landlord_address', 'tenant_name', 
+                         'property_address', 'rent_amount', 'payment_date', 'period']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
 
         # Initialize receipt generator with template
         template_path = os.path.join(app.static_folder, 'modele_quittance_de_loyer.docx')
@@ -107,8 +161,8 @@ def generate_receipt():
         receipt_generator = RentReceipt(template_path)
 
         try:
-            # Generate receipt
-            pdf_path = receipt_generator.generate_receipt(
+            # Format receipt data
+            formatted_data = receipt_generator.format_receipt_data(
                 landlord_name=data['landlord_name'],
                 landlord_address=data['landlord_address'],
                 tenant_name=data['tenant_name'],
@@ -116,15 +170,43 @@ def generate_receipt():
                 rent_amount=float(data['rent_amount']),
                 payment_date=data['payment_date'],
                 period=data['period'],
-                charges=data.get('charges')
+                charges={charge['description']: float(charge['amount']) for charge in data.get('charges', [])} if data.get('charges') else None
             )
 
-            # Send the file
-            return send_file(pdf_path, as_attachment=True)
+            # Flatten the data structure for the frontend
+            response_data = {
+                'city': formatted_data['landlord']['city'],
+                'formatted_date': formatted_data['payment']['date'],
+                'landlord_name': formatted_data['landlord']['name'],
+                'landlord_address': formatted_data['landlord']['address'],
+                'tenant_name': formatted_data['tenant']['name'],
+                'property_address': formatted_data['tenant']['address'],
+                'rent_amount': formatted_data['payment']['rent_amount'],
+                'rent_amount_letters': formatted_data['payment']['rent_amount_letters'],
+                'period': formatted_data['payment']['period'],
+                'total_amount': formatted_data['payment']['total_amount'],
+                'total_amount_letters': formatted_data['payment']['total_amount_letters']
+            }
+
+            # Add charges if present
+            if 'charges' in formatted_data:
+                response_data.update({
+                    'charges': [
+                        {
+                            'description': charge['description'],
+                            'amount': charge['amount']
+                        }
+                        for charge in formatted_data['charges']['items']
+                    ],
+                    'total_charges': formatted_data['charges']['total'],
+                    'total_charges_letters': formatted_data['charges']['total_letters']
+                })
+
+            return jsonify(response_data)
 
         except Exception as e:
-            app.logger.error(f"Error in receipt generation: {str(e)}")
-            return jsonify({'error': f'Error generating receipt: {str(e)}'}), 500
+            app.logger.error(f"Error in receipt formatting: {str(e)}")
+            return jsonify({'error': f'Error formatting receipt: {str(e)}'}), 500
 
     except Exception as e:
         app.logger.error(f"Error in request handling: {str(e)}")

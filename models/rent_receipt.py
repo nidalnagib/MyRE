@@ -210,6 +210,69 @@ class RentReceipt:
 
         return result
 
+    def format_receipt_data(self,
+                          landlord_name: str,
+                          landlord_address: str,
+                          tenant_name: str,
+                          property_address: str,
+                          rent_amount: float,
+                          payment_date: str,
+                          period: str,
+                          charges: Optional[Dict[str, float]] = None) -> Dict:
+        """Format receipt data without generating PDF"""
+        # Calculate total amount
+        total_amount = rent_amount
+        if charges:
+            total_amount += sum(charges.values())
+
+        # Parse addresses
+        landlord_address_components = self.parse_address(landlord_address)
+        property_address_components = self.parse_address(property_address)
+
+        # Format the data
+        formatted_data = {
+            'landlord': {
+                'name': landlord_name,
+                'address': landlord_address,
+                'city': landlord_address_components['city'],
+                'postal_code': landlord_address_components['postal_code'],
+                'street': landlord_address_components['street']
+            },
+            'tenant': {
+                'name': tenant_name,
+                'address': property_address,
+                'city': property_address_components['city'],
+                'postal_code': property_address_components['postal_code'],
+                'street': property_address_components['street']
+            },
+            'payment': {
+                'date': self.format_date(payment_date),
+                'period': self.format_period(period),
+                'rent_amount': f"{rent_amount:.2f} €",
+                'rent_amount_letters': self.number_to_french_words(rent_amount),
+                'total_amount': f"{total_amount:.2f} €",
+                'total_amount_letters': self.number_to_french_words(total_amount)
+            }
+        }
+
+        if charges:
+            total_charges = sum(charges.values())
+            formatted_charges = [
+                {
+                    'description': desc,
+                    'amount': f"{amount:.2f} €",
+                    'amount_letters': self.number_to_french_words(amount)
+                }
+                for desc, amount in charges.items()
+            ]
+            formatted_data['charges'] = {
+                'items': formatted_charges,
+                'total': f"{total_charges:.2f} €",
+                'total_letters': self.number_to_french_words(total_charges)
+            }
+
+        return formatted_data
+
     def generate_receipt(self,
                         landlord_name: str,
                         landlord_address: str,
@@ -219,61 +282,55 @@ class RentReceipt:
                         payment_date: str,
                         period: str,
                         charges: Optional[Dict[str, float]] = None) -> str:
-        """
-        Generate a rent receipt PDF
-        """
+        """Generate a rent receipt PDF"""
         # Initialize COM for Windows
         if sys.platform == 'win32':
             pythoncom.CoInitialize()
         
         try:
-            # Calculate total amount
-            total_amount = rent_amount
-            if charges:
-                total_amount += sum(charges.values())
+            # Format the data
+            formatted_data = self.format_receipt_data(
+                landlord_name=landlord_name,
+                landlord_address=landlord_address,
+                tenant_name=tenant_name,
+                property_address=property_address,
+                rent_amount=rent_amount,
+                payment_date=payment_date,
+                period=period,
+                charges=charges
+            )
 
-            # Extract landlord city
-            landlord_address_components = self.parse_address(landlord_address)
-            landlord_city = landlord_address_components['city']
-
+            # Prepare context for docxtpl
             context = {
-                'landlord_name': landlord_name,
-                'landlord_address': landlord_address,
-                'landlord_city': landlord_city,
-                'tenant_name': tenant_name,
-                'property_address': property_address,
-                'rent_amount': f"{rent_amount:.2f} €",
-                'rent_amount_letters': self.number_to_french_words(rent_amount),
-                'payment_date': self.format_date(payment_date),
-                'period': self.format_period(period),
-                'total_amount': f"{total_amount:.2f} €",
-                'total_amount_letters': self.number_to_french_words(total_amount)
+                'landlord_name': formatted_data['landlord']['name'],
+                'landlord_address': formatted_data['landlord']['address'],
+                'landlord_city': formatted_data['landlord']['city'],
+                'tenant_name': formatted_data['tenant']['name'],
+                'property_address': formatted_data['tenant']['address'],
+                'rent_amount': formatted_data['payment']['rent_amount'],
+                'rent_amount_letters': formatted_data['payment']['rent_amount_letters'],
+                'payment_date': formatted_data['payment']['date'],
+                'period': formatted_data['payment']['period'],
+                'total_amount': formatted_data['payment']['total_amount'],
+                'total_amount_letters': formatted_data['payment']['total_amount_letters']
             }
 
             if charges:
-                total_charges = sum(charges.values())
-                # Format charges for template
-                formatted_charges = [
-                    {
-                        'description': desc,
-                        'amount': f"{amount:.2f} €",
-                        'amount_letters': self.number_to_french_words(amount)
-                    }
-                    for desc, amount in charges.items()
-                ]
-                context['charges'] = formatted_charges
-                context['total_charges'] = f"{total_charges:.2f} €"
-                context['total_charges_letters'] = self.number_to_french_words(total_charges)
-        
+                context.update({
+                    'charges': formatted_data['charges']['items'],
+                    'total_charges': formatted_data['charges']['total'],
+                    'total_charges_letters': formatted_data['charges']['total_letters']
+                })
+
             # Create output directory if it doesn't exist
             output_dir = os.path.join(os.path.dirname(self.template_path), 'generated_receipts')
             os.makedirs(output_dir, exist_ok=True)
-        
+
             # Generate unique filename
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             docx_path = os.path.join(output_dir, f'receipt_{timestamp}.docx')
             pdf_path = os.path.join(output_dir, f'receipt_{timestamp}.pdf')
-        
+
             # Render the template
             self.doc.render(context)
             self.doc.save(docx_path)
